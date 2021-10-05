@@ -372,7 +372,7 @@ impl<'a> Iterator for AncillaryDataDecoder<'a> {
         // Now let's get the type itself:
         let element_type = u32_from_slice(&bytes[self.i + type_offset..=self.i + type_offset + 4]);
         // The size of cmsg_size, cmsg_level and cmsg_type together
-        let element_offset = type_offset + 4;
+        let element_offset = self.i + type_offset + 4;
 
         // Update the counter before returning.
         self.i += element_offset // cmsg_size, cmsg_level and cmsg_type
