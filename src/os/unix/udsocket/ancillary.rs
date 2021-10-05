@@ -132,7 +132,7 @@ impl<'a> AncillaryData<'a> {
                 },
                 #[cfg(uds_ucred)]
                 AncillaryData::Credentials { pid, uid, gid } => {
-                    cmsg_type_bytes = SCM_RIGHTS.to_ne_bytes();
+                    cmsg_type_bytes = SCM_CREDENTIALS.to_ne_bytes();
                     cmsg_len += size_of::<ucred>();
                     // #[cfg(target_pointer_width = "64")]
                     let cmsg_len_bytes = cmsg_len.to_ne_bytes();
