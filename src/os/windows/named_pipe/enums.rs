@@ -1,25 +1,34 @@
 use super::super::imports::*;
 use std::{convert::TryFrom, mem};
 
-/// The direction of a named pipe connection, designating who can read data and who can write it. This describes the direction of the data flow unambiguously, so that the meaning of the values is the same for the client and server — [`ClientToServer`] always means client → server, for example.
+/// The direction of a named pipe connection, designating who can read data and
+/// who can write it. This describes the direction of the data flow
+/// unambiguously, so that the meaning of the values is the same for the client
+/// and server — [`ClientToServer`] always means client → server, for example.
 ///
 /// [`ClientToServer`]: enum.PipeDirection.html#variant.ClientToServer " "
-// I had to type out both the link to the page and the name of the variant since the link can be clicked from module-level documentation so please don't touch it.
+// I had to type out both the link to the page and the name of the variant since the link can be
+// clicked from module-level documentation so please don't touch it.
 #[repr(u32)]
 // We depend on the fact that DWORD always maps to u32, which, thankfully, will always stay true
 // since the public WinAPI is supposed to be ABI-compatible. Just keep in mind that the
 // #[repr(u32)] means that we can transmute this enumeration to the Windows DWORD type.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum PipeDirection {
-    /// Represents a server ← client data flow: clients write data, the server reads it.
+    /// Represents a server ← client data flow: clients write data, the server
+    /// reads it.
     ClientToServer = PIPE_ACCESS_INBOUND,
-    /// Represents a server → client data flow: the server writes data, clients read it.
+    /// Represents a server → client data flow: the server writes data, clients
+    /// read it.
     ServerToClient = PIPE_ACCESS_OUTBOUND,
-    /// Represents a server ⇄ client data flow: the server can write data which then is read by the client, while the client writes data which is read by the server.
+    /// Represents a server ⇄ client data flow: the server can write data which
+    /// then is read by the client, while the client writes data which is read
+    /// by the server.
     Duplex = PIPE_ACCESS_DUPLEX,
 }
 impl PipeDirection {
-    /// Returns the role which the pipe client will have in this direction setting.
+    /// Returns the role which the pipe client will have in this direction
+    /// setting.
     ///
     /// # Usage
     /// ```
@@ -46,7 +55,8 @@ impl PipeDirection {
             Self::Duplex => PipeStreamRole::ReaderAndWriter,
         }
     }
-    /// Returns the role which the pipe server will have in this direction setting.
+    /// Returns the role which the pipe server will have in this direction
+    /// setting.
     ///
     /// # Usage
     /// ```
@@ -91,9 +101,13 @@ impl From<PipeDirection> for DWORD {
         unsafe { mem::transmute(op) }
     }
 }
-/// Describes the role of a named pipe stream. In constrast to [`PipeDirection`], the meaning of values here is relative — for example, [`Reader`] means [`ServerToClient`] if you're creating a server and [`ClientToServer`] if you're creating a client.
+/// Describes the role of a named pipe stream. In constrast to
+/// [`PipeDirection`], the meaning of values here is relative — for example,
+/// [`Reader`] means [`ServerToClient`] if you're creating a server and
+/// [`ClientToServer`] if you're creating a client.
 ///
-/// This enumeration is also not layout-compatible with the `PIPE_ACCESS_*` constants, in contrast to [`PipeDirection`].
+/// This enumeration is also not layout-compatible with the `PIPE_ACCESS_*`
+/// constants, in contrast to [`PipeDirection`].
 ///
 /// [`PipeDirection`]: enum.PipeDirection.html " "
 /// [`Reader`]: #variant.Reader " "
@@ -110,7 +124,8 @@ pub enum PipeStreamRole {
     ReaderAndWriter,
 }
 impl PipeStreamRole {
-    /// Returns the data flow direction of the data stream, assuming that the value describes the role of the server.
+    /// Returns the data flow direction of the data stream, assuming that the
+    /// value describes the role of the server.
     ///
     /// # Usage
     /// ```
@@ -137,7 +152,8 @@ impl PipeStreamRole {
             Self::ReaderAndWriter => PipeDirection::Duplex,
         }
     }
-    /// Returns the data flow direction of the data stream, assuming that the value describes the role of the client.
+    /// Returns the data flow direction of the data stream, assuming that the
+    /// value describes the role of the client.
     ///
     /// # Usage
     /// ```
@@ -170,17 +186,22 @@ impl PipeStreamRole {
 #[repr(u32)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum PipeMode {
-    /// Designates that the pipe stream works in byte stream mode, erasing the boundaries of separate messages.
+    /// Designates that the pipe stream works in byte stream mode, erasing the
+    /// boundaries of separate messages.
     Bytes = PIPE_TYPE_BYTE,
-    /// Designates that the pipe stream works in message stream mode, preserving the boundaries of separate messages yet still allowing to read them in byte stream mode.
+    /// Designates that the pipe stream works in message stream mode, preserving
+    /// the boundaries of separate messages yet still allowing to read them in
+    /// byte stream mode.
     Messages = PIPE_TYPE_MESSAGE,
 }
 impl PipeMode {
-    /// Converts the value into a raw `DWORD`-typed constant, either `PIPE_TYPE_BYTE` or `PIPE_TYPE_MESSAGE` depending on the value.
+    /// Converts the value into a raw `DWORD`-typed constant, either
+    /// `PIPE_TYPE_BYTE` or `PIPE_TYPE_MESSAGE` depending on the value.
     pub const fn to_pipe_type(self) -> DWORD {
         self as _
     }
-    /// Converts the value into a raw `DWORD`-typed constant, either `PIPE_READMODE_BYTE` or `PIPE_READMODE_MESSAGE` depending on the value.
+    /// Converts the value into a raw `DWORD`-typed constant, either
+    /// `PIPE_READMODE_BYTE` or `PIPE_READMODE_MESSAGE` depending on the value.
     pub const fn to_readmode(self) -> DWORD {
         match self {
             Self::Bytes => PIPE_READMODE_BYTE,
@@ -190,7 +211,8 @@ impl PipeMode {
 }
 impl TryFrom<DWORD> for PipeMode {
     type Error = ();
-    /// Converts a Windows constant to a `PipeMode` if it's in range. Both `PIPE_TYPE_*` and `PIPE_READMODE_*` are supported.
+    /// Converts a Windows constant to a `PipeMode` if it's in range. Both
+    /// `PIPE_TYPE_*` and `PIPE_READMODE_*` are supported.
     ///
     /// # Errors
     /// Returns `Err` if the value is not a valid pipe stream mode constant.

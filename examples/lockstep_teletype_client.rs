@@ -10,18 +10,11 @@ fn main() {
     let mut buffer = String::new();
     loop {
         if our_turn {
-            io::stdin()
-                .read_line(&mut buffer)
-                .expect("failed to read line from stdin");
-            conn.get_mut()
-                .write_all(buffer.as_ref())
-                .expect("failed to write line to socket");
+            io::stdin().read_line(&mut buffer).expect("failed to read line from stdin");
+            conn.get_mut().write_all(buffer.as_ref()).expect("failed to write line to socket");
         } else {
-            conn.read_line(&mut buffer)
-                .expect("failed to read line from socket");
-            io::stdout()
-                .write_all(buffer.as_ref())
-                .expect("failed to write line to stdout");
+            conn.read_line(&mut buffer).expect("failed to read line from socket");
+            io::stdout().write_all(buffer.as_ref()).expect("failed to write line to stdout");
         }
         buffer.clear();
         our_turn = !our_turn;

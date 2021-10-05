@@ -110,8 +110,8 @@ fn collect_signals(target: &TargetTriplet) {
 }
 
 fn checkver(version: &Version, m: u64) -> bool {
-    // A build script is needed for this because the `rustversion` crate has some weird problems
-    // around being used as a crate-level inner attribute.
+    // A build script is needed for this because the `rustversion` crate has some
+    // weird problems around being used as a crate-level inner attribute.
     *version >= Version::new(1, m, 0)
 }
 
@@ -130,8 +130,8 @@ fn ldefine(cfgs: &[&str]) {
 
 struct TargetTriplet {
     arch: String,
-    os: String,
-    env: Option<String>,
+    os:   String,
+    env:  Option<String>,
 }
 #[rustfmt::skip]
 impl TargetTriplet {

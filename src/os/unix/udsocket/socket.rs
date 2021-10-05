@@ -4,10 +4,19 @@ use super::{
     super::{close_by_error, handle_fd_error},
     imports::*,
     util::{
-        check_ancillary_unsound, enable_passcred, fill_out_msghdr_r, mk_msghdr_r, mk_msghdr_w,
-        raw_get_nonblocking, raw_set_nonblocking,
+        check_ancillary_unsound,
+        enable_passcred,
+        fill_out_msghdr_r,
+        mk_msghdr_r,
+        mk_msghdr_w,
+        raw_get_nonblocking,
+        raw_set_nonblocking,
     },
-    AncillaryData, AncillaryDataBuf, EncodedAncillaryData, ToUdSocketPath, UdSocketPath,
+    AncillaryData,
+    AncillaryDataBuf,
+    EncodedAncillaryData,
+    ToUdSocketPath,
+    UdSocketPath,
 };
 use crate::{ReliableReadMsg, Sealed};
 use std::{
@@ -20,17 +29,23 @@ use to_method::To;
 
 /// A datagram socket in the Unix domain.
 ///
-/// All such sockets have the `SOCK_DGRAM` socket type; in other words, this is the Unix domain version of a UDP socket.
+/// All such sockets have the `SOCK_DGRAM` socket type; in other words, this is
+/// the Unix domain version of a UDP socket.
 pub struct UdSocket {
     fd: FdOps,
 }
 impl UdSocket {
     /// Creates a new server socket at the specified address.
     ///
-    /// If the socket path exceeds the [maximum socket path length] (which includes the first 0 byte when using the [socket namespace]), an error is returned. Errors can also be produced for different reasons, i.e. errors should always be handled regardless of whether the path is known to be short enough or not.
+    /// If the socket path exceeds the [maximum socket path length] (which
+    /// includes the first 0 byte when using the [socket namespace]), an error
+    /// is returned. Errors can also be produced for different reasons, i.e.
+    /// errors should always be handled regardless of whether the path is known
+    /// to be short enough or not.
     ///
     /// # Example
-    /// See [`ToUdSocketPath`] for an example of using various string types to specify socket paths.
+    /// See [`ToUdSocketPath`] for an example of using various string types to
+    /// specify socket paths.
     ///
     /// # System calls
     /// - `socket`
@@ -84,7 +99,8 @@ impl UdSocket {
     /// # }
     /// # Ok(()) }
     /// ```
-    /// See [`ToUdSocketPath`] for an example of using various string types to specify socket paths.
+    /// See [`ToUdSocketPath`] for an example of using various string types to
+    /// specify socket paths.
     ///
     /// # System calls
     /// - `socket`
@@ -123,9 +139,15 @@ impl UdSocket {
         (x, false)
     }
 
-    /// Receives a single datagram from the socket, returning the size of the received datagram.
+    /// Receives a single datagram from the socket, returning the size of the
+    /// received datagram.
     ///
-    /// *Note: there is an additional meaningless boolean return value which is always `false`. It used to signify whether the datagram was truncated or not, but the functionality was implemented incorrectly and only on Linux, leading to its removal in version 1.2.0. In the next breaking release, 2.0.0, the return value will be changed to just `io::Result<usize>`.*
+    /// *Note: there is an additional meaningless boolean return value which is
+    /// always `false`. It used to signify whether the datagram was truncated or
+    /// not, but the functionality was implemented incorrectly and only on
+    /// Linux, leading to its removal in version 1.2.0. In the next breaking
+    /// release, 2.0.0, the return value will be changed to just
+    /// `io::Result<usize>`.*
     ///
     /// # System calls
     /// - `read`
@@ -135,9 +157,15 @@ impl UdSocket {
         self.fd.read(buf).map(Self::add_fake_trunc_flag)
     }
 
-    /// Receives a single datagram from the socket, making use of [scatter input] and returning the size of the received datagram.
+    /// Receives a single datagram from the socket, making use of [scatter
+    /// input] and returning the size of the received datagram.
     ///
-    /// *Note: there is an additional meaningless boolean return value which is always `false`. It used to signify whether the datagram was truncated or not, but the functionality was implemented incorrectly and only on Linux, leading to its removal in version 1.2.0. In the next breaking release, 2.0.0, the return value will be changed to just `io::Result<usize>`.*
+    /// *Note: there is an additional meaningless boolean return value which is
+    /// always `false`. It used to signify whether the datagram was truncated or
+    /// not, but the functionality was implemented incorrectly and only on
+    /// Linux, leading to its removal in version 1.2.0. In the next breaking
+    /// release, 2.0.0, the return value will be changed to just
+    /// `io::Result<usize>`.*
     ///
     /// # System calls
     /// - `readv`
@@ -147,13 +175,19 @@ impl UdSocket {
         self.fd.read_vectored(bufs).map(Self::add_fake_trunc_flag)
     }
 
-    /// Receives a single datagram and ancillary data from the socket. The return value is in the following order:
+    /// Receives a single datagram and ancillary data from the socket. The
+    /// return value is in the following order:
     /// - How many bytes of the datagram were received
     /// - *Deprecated `bool` field (always `false`), see note*
     /// - How many bytes of ancillary data were received
     /// - *Another deprecated `bool` field (always `false`), see note*
     ///
-    /// *Note: there are two additional meaningless boolean return values which are always `false`. They used to signify whether the datagram, and the ancillary data respectively, were truncated or not, but the functionality was implemented incorrectly and only on Linux, leading to its removal in version 1.2.0. In the next breaking release, 2.0.0, the return value will be changed to just `io::Result<usize>`.*
+    /// *Note: there are two additional meaningless boolean return values which
+    /// are always `false`. They used to signify whether the datagram, and the
+    /// ancillary data respectively, were truncated or not, but the
+    /// functionality was implemented incorrectly and only on Linux, leading to
+    /// its removal in version 1.2.0. In the next breaking release, 2.0.0, the
+    /// return value will be changed to just `io::Result<usize>`.*
     ///
     /// # System calls
     /// - `recvmsg`
@@ -168,13 +202,19 @@ impl UdSocket {
         self.recv_ancillary_vectored(&mut [IoSliceMut::new(buf)], abuf)
     }
 
-    /// Receives a single datagram and ancillary data from the socket, making use of [scatter input]. The return value is in the following order:
+    /// Receives a single datagram and ancillary data from the socket, making
+    /// use of [scatter input]. The return value is in the following order:
     /// - How many bytes of the datagram were received
     /// - *Deprecated `bool` field (always `false`), see note*
     /// - How many bytes of ancillary data were received
     /// - *Another deprecated `bool` field (always `false`), see note*
     ///
-    /// *Note: there are two additional meaningless boolean return values which are always `false`. They used to signify whether the datagram, and the ancillary data respectively, were truncated or not, but the functionality was implemented incorrectly and only on Linux, leading to its removal in version 1.2.0. In the next breaking release, 2.0.0, the return value will be changed to just `io::Result<(usize, usize)>`.*
+    /// *Note: there are two additional meaningless boolean return values which
+    /// are always `false`. They used to signify whether the datagram, and the
+    /// ancillary data respectively, were truncated or not, but the
+    /// functionality was implemented incorrectly and only on Linux, leading to
+    /// its removal in version 1.2.0. In the next breaking release, 2.0.0, the
+    /// return value will be changed to just `io::Result<(usize, usize)>`.*
     ///
     /// # System calls
     /// - `recvmsg`
@@ -199,11 +239,14 @@ impl UdSocket {
         }
     }
 
-    /// Receives a single datagram and the source address from the socket, returning how much of the buffer was filled out and whether a part of the datagram was discarded because the buffer was too small.
+    /// Receives a single datagram and the source address from the socket,
+    /// returning how much of the buffer was filled out and whether a part of
+    /// the datagram was discarded because the buffer was too small.
     ///
     /// # System calls
     /// - `recvmsg`
-    ///     - Future versions of `interprocess` may use `recvfrom` instead; for now, this method is a wrapper around [`recv_from_vectored`].
+    ///     - Future versions of `interprocess` may use `recvfrom` instead; for
+    ///       now, this method is a wrapper around [`recv_from_vectored`].
     ///
     /// [`recv_from_vectored`]: #method.recv_from_vectored " "
     // TODO use recvfrom
@@ -215,7 +258,10 @@ impl UdSocket {
         self.recv_from_vectored(&mut [IoSliceMut::new(buf)], addr_buf)
     }
 
-    /// Receives a single datagram and the source address from the socket, making use of [scatter input] and returning how much of the buffer was filled out and whether a part of the datagram was discarded because the buffer was too small.
+    /// Receives a single datagram and the source address from the socket,
+    /// making use of [scatter input] and returning how much of the buffer was
+    /// filled out and whether a part of the datagram was discarded because the
+    /// buffer was too small.
     ///
     /// # System calls
     /// - `recvmsg`
@@ -230,13 +276,19 @@ impl UdSocket {
             .map(|x| (x.0, x.1))
     }
 
-    /// Receives a single datagram, ancillary data and the source address from the socket. The return value is in the following order:
+    /// Receives a single datagram, ancillary data and the source address from
+    /// the socket. The return value is in the following order:
     /// - How many bytes of the datagram were received
     /// - *Deprecated `bool` field (always `false`), see note*
     /// - How many bytes of ancillary data were received
     /// - *Another deprecated `bool` field (always `false`), see note*
     ///
-    /// *Note: there are two additional meaningless boolean return values which are always `false`. They used to signify whether the datagram, and the ancillary data respectively, were truncated or not, but the functionality was implemented incorrectly and only on Linux, leading to its removal in version 1.2.0. In the next breaking release, 2.0.0, the return value will be changed to just `io::Result<(usize, usize)>`.*
+    /// *Note: there are two additional meaningless boolean return values which
+    /// are always `false`. They used to signify whether the datagram, and the
+    /// ancillary data respectively, were truncated or not, but the
+    /// functionality was implemented incorrectly and only on Linux, leading to
+    /// its removal in version 1.2.0. In the next breaking release, 2.0.0, the
+    /// return value will be changed to just `io::Result<(usize, usize)>`.*
     ///
     /// # System calls
     /// - `recvmsg`
@@ -254,11 +306,15 @@ impl UdSocket {
         self.recv_from_ancillary_vectored(&mut [IoSliceMut::new(buf)], abuf, addr_buf)
     }
 
-    /// Receives a single datagram, ancillary data and the source address from the socket, making use of [scatter input]. The return value is in the following order:
+    /// Receives a single datagram, ancillary data and the source address from
+    /// the socket, making use of [scatter input]. The return value is in the
+    /// following order:
     /// - How many bytes of the datagram were received
-    /// - Whether a part of the datagram was discarded because the buffer was too small
+    /// - Whether a part of the datagram was discarded because the buffer was
+    ///   too small
     /// - How many bytes of ancillary data were received
-    /// - Whether some ancillary data was discarded because the buffer was too small
+    /// - Whether some ancillary data was discarded because the buffer was too
+    ///   small
     ///
     /// # System calls
     /// - `recvmsg`
@@ -292,9 +348,12 @@ impl UdSocket {
         }
     }
 
-    /// Returns the size of the next datagram available on the socket without discarding it.
+    /// Returns the size of the next datagram available on the socket without
+    /// discarding it.
     ///
-    /// This method is only available on Linux since kernel version 2.2. On lower kernel versions, it will fail; on other platforms, it's absent and thus any usage of it will result in a compile-time error.
+    /// This method is only available on Linux since kernel version 2.2. On
+    /// lower kernel versions, it will fail; on other platforms, it's absent and
+    /// thus any usage of it will result in a compile-time error.
     ///
     /// # System calls
     /// - `recv`
@@ -323,28 +382,32 @@ impl UdSocket {
     ///
     /// # System calls
     /// - `sendmsg`
-    ///     - Future versions of `interprocess` may use `write` instead; for now, this method is a wrapper around [`send_vectored`].
+    ///     - Future versions of `interprocess` may use `write` instead; for
+    ///       now, this method is a wrapper around [`send_vectored`].
     ///
     /// [`send_vectored`]: #method.send_vectored " "
     pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
         self.send_vectored(&[IoSlice::new(buf)])
     }
-    /// Sends a datagram into the socket, making use of [gather output] for the main data.
+    /// Sends a datagram into the socket, making use of [gather output] for the
+    /// main data.
     ///
     ///
     /// # System calls
     /// - `sendmsg`
-    ///     - Future versions of `interprocess` may use `writev` instead; for now, this method is a wrapper around [`send_ancillary_vectored`].
+    ///     - Future versions of `interprocess` may use `writev` instead; for
+    ///       now, this method is a wrapper around [`send_ancillary_vectored`].
     ///
     /// [gather output]: https://en.wikipedia.org/wiki/Vectored_I/O " "
     /// [`send_ancillary_vectored`]: #method.send_ancillary_vectored " "
     pub fn send_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        self.send_ancillary_vectored(bufs, iter::empty())
-            .map(|x| x.0)
+        self.send_ancillary_vectored(bufs, iter::empty()).map(|x| x.0)
     }
     /// Sends a datagram and ancillary data into the socket.
     ///
-    /// The ancillary data buffer is automatically converted from the supplied value, if possible. For that reason, slices and `Vec`s of `AncillaryData` can be passed directly.
+    /// The ancillary data buffer is automatically converted from the supplied
+    /// value, if possible. For that reason, slices and `Vec`s of
+    /// `AncillaryData` can be passed directly.
     ///
     /// # System calls
     /// - `sendmsg`
@@ -356,9 +419,12 @@ impl UdSocket {
         check_ancillary_unsound()?;
         self.send_ancillary_vectored(&[IoSlice::new(buf)], ancillary_data)
     }
-    /// Sends a datagram and ancillary data into the socket, making use of [gather output] for the main data.
+    /// Sends a datagram and ancillary data into the socket, making use of
+    /// [gather output] for the main data.
     ///
-    /// The ancillary data buffer is automatically converted from the supplied value, if possible. For that reason, slices and `Vec`s of `AncillaryData` can be passed directly.
+    /// The ancillary data buffer is automatically converted from the supplied
+    /// value, if possible. For that reason, slices and `Vec`s of
+    /// `AncillaryData` can be passed directly.
     ///
     /// # System calls
     /// - `sendmsg`
@@ -370,9 +436,7 @@ impl UdSocket {
         ancillary_data: impl IntoIterator<Item = AncillaryData<'a>>,
     ) -> io::Result<(usize, usize)> {
         check_ancillary_unsound()?;
-        let abuf = ancillary_data
-            .into_iter()
-            .collect::<EncodedAncillaryData<'_>>();
+        let abuf = ancillary_data.into_iter().collect::<EncodedAncillaryData<'_>>();
         let hdr = mk_msghdr_w(bufs, abuf.as_ref())?;
         let (success, bytes_written) = unsafe {
             let result = libc::sendmsg(self.as_raw_fd(), &hdr as *const _, 0);
@@ -385,9 +449,16 @@ impl UdSocket {
         }
     }
 
-    /// Enables or disables the nonblocking mode for the socket. By default, it is disabled.
+    /// Enables or disables the nonblocking mode for the socket. By default, it
+    /// is disabled.
     ///
-    /// In nonblocking mode, calls to the `recv…` methods and the `Read` trait methods will never wait for at least one message to become available; calls to `send…` methods and the `Write` trait methods will never wait for the other side to remove enough bytes from the buffer for the write operation to be performed. Those operations will instead return a [`WouldBlock`] error immediately, allowing the thread to perform other useful operations in the meantime.
+    /// In nonblocking mode, calls to the `recv…` methods and the `Read` trait
+    /// methods will never wait for at least one message to become available;
+    /// calls to `send…` methods and the `Write` trait methods will never wait
+    /// for the other side to remove enough bytes from the buffer for the write
+    /// operation to be performed. Those operations will instead return a
+    /// [`WouldBlock`] error immediately, allowing the thread to perform other
+    /// useful operations in the meantime.
     ///
     /// [`accept`]: #method.accept " "
     /// [`incoming`]: #method.incoming " "
@@ -400,7 +471,9 @@ impl UdSocket {
         unsafe { raw_get_nonblocking(self.fd.0) }
     }
 
-    /// Fetches the credentials of the other end of the connection without using ancillary data. The returned structure contains the process identifier, user identifier and group identifier of the peer.
+    /// Fetches the credentials of the other end of the connection without using
+    /// ancillary data. The returned structure contains the process identifier,
+    /// user identifier and group identifier of the peer.
     #[cfg(any(doc, uds_peercred))]
     #[cfg_attr( // uds_peercred template
         feature = "doc_cfg",
@@ -425,9 +498,7 @@ impl UdSocket {
 }
 impl Debug for UdSocket {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("UdSocket")
-            .field("file_descriptor", &self.as_raw_fd())
-            .finish()
+        f.debug_struct("UdSocket").field("file_descriptor", &self.as_raw_fd()).finish()
     }
 }
 #[cfg(any(doc, target_os = "linux"))]
@@ -454,7 +525,8 @@ impl ReliableReadMsg for UdSocket {
     }
 }
 #[cfg(unix)]
-impl Sealed for UdSocket {}
+impl Sealed for UdSocket {
+}
 #[cfg(unix)]
 impl AsRawFd for UdSocket {
     fn as_raw_fd(&self) -> c_int {

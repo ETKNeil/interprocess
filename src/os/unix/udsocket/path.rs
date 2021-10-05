@@ -15,22 +15,39 @@ use std::{
 
 /// Represents a name for a Unix domain socket.
 ///
-/// The main purpose for this enumeration is to conditionally support the dedicated socket namespace on systems which implement it — for that, the `Namespaced` variant is used. Depending on your system, you might not be seeing it, which is when you'd need the `File` fallback variant, which works on all POSIX-compliant systems.
+/// The main purpose for this enumeration is to conditionally support the
+/// dedicated socket namespace on systems which implement it — for that, the
+/// `Namespaced` variant is used. Depending on your system, you might not be
+/// seeing it, which is when you'd need the `File` fallback variant, which works
+/// on all POSIX-compliant systems.
 ///
 /// ## `Namespaced`
-/// This variant refers to sockets in a dedicated socket namespace, which is fully isolated from the main filesystem and closes sockets automatically when the server which opened the socket shuts down. **This variant is only implemented on Linux, which is why it is not available on other POSIX-conformant systems at compile time, resulting in a compile-time error if usage is attempted.**
+/// This variant refers to sockets in a dedicated socket namespace, which is
+/// fully isolated from the main filesystem and closes sockets automatically
+/// when the server which opened the socket shuts down. **This variant is only
+/// implemented on Linux, which is why it is not available on other
+/// POSIX-conformant systems at compile time, resulting in a compile-time error
+/// if usage is attempted.**
 ///
 /// ## `File`
-/// All sockets identified this way are located on the main filesystem and exist as persistent files until deletion, preventing servers from using the same socket without deleting it from the filesystem first. This variant is available on all POSIX-compilant systems.
+/// All sockets identified this way are located on the main filesystem and exist
+/// as persistent files until deletion, preventing servers from using the same
+/// socket without deleting it from the filesystem first. This variant is
+/// available on all POSIX-compilant systems.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum UdSocketPath<'a> {
-    /// An unnamed socket, identified only by its file descriptor. This is an invalid path value for creating sockets — all attempts to use such a value will result in an error.
+    /// An unnamed socket, identified only by its file descriptor. This is an
+    /// invalid path value for creating sockets — all attempts to use such a
+    /// value will result in an error.
     Unnamed,
-    /// Identifies a socket which is located in the filesystem tree, existing as a file. See the [enum-level documentation] for more.
+    /// Identifies a socket which is located in the filesystem tree, existing as
+    /// a file. See the [enum-level documentation] for more.
     ///
     /// [enum-level documentation]: #file " "
     File(Cow<'a, CStr>),
-    /// Identifies a socket in the dedicated socket namespace, where it exists until the server closes it rather than persisting as a file. See the [enum-level documentation] for more.
+    /// Identifies a socket in the dedicated socket namespace, where it exists
+    /// until the server closes it rather than persisting as a file. See the
+    /// [enum-level documentation] for more.
     ///
     /// [enum-level documentation]: #namespaced " "
     #[cfg(uds_linux_namespace)]
@@ -41,7 +58,9 @@ pub enum UdSocketPath<'a> {
     Namespaced(Cow<'a, CStr>),
 }
 impl<'a> UdSocketPath<'a> {
-    /// Returns the path as a `CStr`. The resulting value does not include any indication of whether it's a namespaced socket name or a filesystem path.
+    /// Returns the path as a `CStr`. The resulting value does not include any
+    /// indication of whether it's a namespaced socket name or a filesystem
+    /// path.
     pub fn as_cstr(&'a self) -> &'a CStr {
         match self {
             Self::File(cow) => &*cow,
@@ -50,7 +69,9 @@ impl<'a> UdSocketPath<'a> {
             Self::Unnamed => empty_cstr(),
         }
     }
-    /// Returns the path as a `CString`. The resulting value does not include any indication of whether it's a namespaced socket name or a filesystem path.
+    /// Returns the path as a `CString`. The resulting value does not include
+    /// any indication of whether it's a namespaced socket name or a filesystem
+    /// path.
     pub fn into_cstring(self) -> CString {
         match self {
             Self::File(cow) => cow.into_owned(),
@@ -60,7 +81,10 @@ impl<'a> UdSocketPath<'a> {
         }
     }
 
-    /// Ensures that the path is stored as an owned `CString` in place, and returns whether that required cloning or not. If `self` was not referring to any socket ([`Unnamed` variant]), the value is set to an empty `CString` (only nul terminator) of type [`File`].
+    /// Ensures that the path is stored as an owned `CString` in place, and
+    /// returns whether that required cloning or not. If `self` was not
+    /// referring to any socket ([`Unnamed` variant]), the value is set to an
+    /// empty `CString` (only nul terminator) of type [`File`].
     ///
     /// [`Unnamed` variant]: #variant.Unnamed " "
     /// [`File`]: #file " "
@@ -71,7 +95,7 @@ impl<'a> UdSocketPath<'a> {
                 Cow::Borrowed(slice) => {
                     *self = Self::File(Cow::Owned(slice.to_owned()));
                     true
-                }
+                },
             },
             #[cfg(uds_linux_namespace)]
             Self::Namespaced(cow) => match cow {
@@ -79,16 +103,17 @@ impl<'a> UdSocketPath<'a> {
                 Cow::Borrowed(slice) => {
                     *self = Self::Namespaced(Cow::Owned(slice.to_owned()));
                     true
-                }
+                },
             },
             Self::Unnamed => {
                 *self = Self::File(Cow::Owned(empty_cstring()));
                 true
-            }
+            },
         }
     }
 
-    /// Returns a mutable reference to the underlying `CString`, cloning the borrowed path if it wasn't owned before.
+    /// Returns a mutable reference to the underlying `CString`, cloning the
+    /// borrowed path if it wasn't owned before.
     pub fn get_cstring_mut(&mut self) -> &mut CString {
         self.make_owned();
         self.try_get_cstring_mut().unwrap_or_else(|| unsafe {
@@ -96,7 +121,8 @@ impl<'a> UdSocketPath<'a> {
             std::hint::unreachable_unchecked()
         })
     }
-    /// Returns a mutable reference to the underlying `CString` if it's available as owned, otherwise returns `None`.
+    /// Returns a mutable reference to the underlying `CString` if it's
+    /// available as owned, otherwise returns `None`.
     pub fn try_get_cstring_mut(&mut self) -> Option<&mut CString> {
         let cow = match self {
             Self::File(cow) => cow,
@@ -110,7 +136,9 @@ impl<'a> UdSocketPath<'a> {
         }
     }
 
-    /// Returns `true` if the path to the socket is stored as an owned `CString`, i.e. if `into_cstring` doesn't require cloning the path; `false` otherwise.
+    /// Returns `true` if the path to the socket is stored as an owned
+    /// `CString`, i.e. if `into_cstring` doesn't require cloning the path;
+    /// `false` otherwise.
     pub fn is_owned(&self) -> bool {
         let cow = match self {
             Self::File(cow) => cow,
@@ -129,7 +157,7 @@ impl<'a> UdSocketPath<'a> {
             Err(..) => {
                 *self = Self::Unnamed;
                 return;
-            }
+            },
         };
         if let Some(cstring) = self.try_get_cstring_mut() {
             let cstring = replace(cstring, empty_cstring());
@@ -153,7 +181,8 @@ impl<'a> UdSocketPath<'a> {
                 vec.resize(path_length, 0);
                 ptr::copy_nonoverlapping(src_ptr, vec.as_mut_ptr(), path_length);
             };
-            // If the system added a nul byte as part of the length, remove the one we added ourselves.
+            // If the system added a nul byte as part of the length, remove the one we added
+            // ourselves.
             if vec.last() == Some(&0) && vec[vec.len() - 2] == 0 {
                 vec.pop();
             }
@@ -216,7 +245,7 @@ impl<'a> UdSocketPath<'a> {
                         ),
                     ));
                 }
-            }
+            },
             #[cfg(uds_linux_namespace)]
             UdSocketPath::Namespaced(..) => {
                 is_namespaced = true;
@@ -229,13 +258,13 @@ impl<'a> UdSocketPath<'a> {
                         ),
                     ));
                 }
-            }
+            },
             UdSocketPath::Unnamed => {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
                     "must provide a proper name for the socket",
                 ))
-            }
+            },
         }
 
         unsafe {
@@ -253,7 +282,11 @@ impl<'a> UdSocketPath<'a> {
     }
 }
 impl UdSocketPath<'static> {
-    /// Creates a buffer suitable for usage with [`recv_from`] ([`_ancillary`]/[`_vectored`]/[`_ancillary_vectored`]). The capacity is equal to the [`MAX_UDSOCKET_PATH_LEN`] constant (the nul terminator in the `CString` is included). **The contained value is unspecified — results of reading from the buffer should not be relied upon.**
+    /// Creates a buffer suitable for usage with [`recv_from`]
+    /// ([`_ancillary`]/[`_vectored`]/[`_ancillary_vectored`]). The capacity is
+    /// equal to the [`MAX_UDSOCKET_PATH_LEN`] constant (the nul terminator in
+    /// the `CString` is included). **The contained value is unspecified —
+    /// results of reading from the buffer should not be relied upon.**
     ///
     /// # Example
     /// ```
@@ -276,7 +309,8 @@ impl UdSocketPath<'static> {
     /// [`recv_from`]: struct.UdSocket.html#method.recv_from " "
     /// [`_ancillary`]: struct.UdSocket.html#method.recv_from " "
     /// [`_vectored`]: struct.UdSocket.html#method.recv_from_vectored " "
-    /// [`_ancillary_vectored`]: struct.UdSocket.html#method.recv_from_ancillary_vectored " "
+    /// [`_ancillary_vectored`]:
+    /// struct.UdSocket.html#method.recv_from_ancillary_vectored " "
     /// [`MAX_UDSOCKET_PATH_LEN`]: constant.MAX_UDSOCKET_PATH_LEN.html " "
     pub fn buffer() -> Self {
         Self::File(Cow::Owned(
@@ -285,11 +319,13 @@ impl UdSocketPath<'static> {
         ))
     }
 
-    /// Constructs a `UdSocketPath::File` value from a `Vec` of bytes, wrapping `CString::new`.
+    /// Constructs a `UdSocketPath::File` value from a `Vec` of bytes, wrapping
+    /// `CString::new`.
     pub fn file_from_vec(vec: Vec<u8>) -> Result<Self, NulError> {
         Ok(Self::File(Cow::Owned(CString::new(vec)?)))
     }
-    /// Constructs a `UdSocketPath::Namespaced` value from a `Vec` of bytes, wrapping `CString::new`.
+    /// Constructs a `UdSocketPath::Namespaced` value from a `Vec` of bytes,
+    /// wrapping `CString::new`.
     #[cfg(uds_linux_namespace)]
     #[cfg_attr( // uds_linux_namespace template
         feature = "doc_cfg",
@@ -311,19 +347,36 @@ impl TryFrom<UdSocketPath<'_>> for sockaddr_un {
     }
 }
 
-/// Trait for types which can be converted to a [path to a Unix domain socket][`UdSocketPath`].
+/// Trait for types which can be converted to a [path to a Unix domain
+/// socket][`UdSocketPath`].
 ///
-/// The difference between this trait and [`TryInto`]`<`[`UdSocketPath`]`>` is that the latter does not constrain the error type to be [`io::Error`] and thus is not compatible with many types from the standard library which are widely expected to be convertible to Unix domain socket paths. Additionally, this makes the special syntax for namespaced sockets possible (see below).
+/// The difference between this trait and [`TryInto`]`<`[`UdSocketPath`]`>` is
+/// that the latter does not constrain the error type to be [`io::Error`] and
+/// thus is not compatible with many types from the standard library which are
+/// widely expected to be convertible to Unix domain socket paths. Additionally,
+/// this makes the special syntax for namespaced sockets possible (see below).
 ///
 /// ## `@` syntax for namespaced paths
-/// On Linux (since it's the only platform which supports [namespaced socket paths]), an extra syntax feature is implemented for string types which don't have file path semantics, i.e. all standard string types except for [`Path`] and [`PathBuf`]. If the first character in a string is `@`, the path is interpreted as a namespaced socket path rather than a normal file path. Read the `UdSocketPath` documentation for more on what that means. There are several ways to opt out of that behavior if you're referring to a socket at a relative path which starts from a `@`:
-/// - Use [`AsRef`] to convert the string slice type into a [`Path`] which has file path semantics and therefore does not have the `@` syntax enabled, if your string type is [`str`] or [`OsStr`]
-/// - Prefix the path with `./`, which carries the same meaning from the perspective of the OS but bypasses the `@` check
-/// - If your string type is [`CStr`] or [`CString`], explicitly construct `UdSocketPath`'s `File` variant with a [`Cow`] wrapping your string value
+/// On Linux (since it's the only platform which supports [namespaced socket
+/// paths]), an extra syntax feature is implemented for string types which don't
+/// have file path semantics, i.e. all standard string types except for [`Path`]
+/// and [`PathBuf`]. If the first character in a string is `@`, the path is
+/// interpreted as a namespaced socket path rather than a normal file path. Read
+/// the `UdSocketPath` documentation for more on what that means. There are
+/// several ways to opt out of that behavior if you're referring to a socket at
+/// a relative path which starts from a `@`:
+/// - Use [`AsRef`] to convert the string slice type into a [`Path`] which has
+///   file path semantics and therefore does not have the `@` syntax enabled, if
+///   your string type is [`str`] or [`OsStr`]
+/// - Prefix the path with `./`, which carries the same meaning from the
+///   perspective of the OS but bypasses the `@` check
+/// - If your string type is [`CStr`] or [`CString`], explicitly construct
+///   `UdSocketPath`'s `File` variant with a [`Cow`] wrapping your string value
 ///
 /// # Example
-/// The following example uses the `UdStreamListener::bind` method, but `UdStream::connect` and `UdSocket::bind`/`UdSocket::connect` accept the same argument types too.
-/// ```no_run
+/// The following example uses the `UdStreamListener::bind` method, but
+/// `UdStream::connect` and `UdSocket::bind`/`UdSocket::connect` accept the same
+/// argument types too. ```no_run
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// # #[cfg(unix)] {
 /// use interprocess::os::unix::udsocket::{UdStreamListener, UdSocketPath};
@@ -383,13 +436,18 @@ impl<'a> ToUdSocketPath<'a> for UdSocketPath<'a> {
     }
 }
 impl<'a> ToUdSocketPath<'a> for &'a CStr {
-    /// Converts a borrowed [`CStr`] to a borrowed `UdSocketPath` with the same lifetime. On platforms which don't support [namespaced socket paths], the variant is always [`File`]; on Linux, which supports namespaced sockets, an extra check for the `@` character is performed. See the trait-level documentation for more.
+    /// Converts a borrowed [`CStr`] to a borrowed `UdSocketPath` with the same
+    /// lifetime. On platforms which don't support [namespaced socket paths],
+    /// the variant is always [`File`]; on Linux, which supports namespaced
+    /// sockets, an extra check for the `@` character is performed. See the
+    /// trait-level documentation for more.
     ///
     /// [`CStr`]: https://doc.rust-lang.org/std/ffi/struct.CStr.html " "
     /// [`File`]: enum.UdSocketPath.html#file " "
     /// [namespaced socket paths]: enum.UdSocketPath.html#namespaced " "
     fn to_socket_path(self) -> io::Result<UdSocketPath<'a>> {
-        // 0x40 is the ASCII code for @, and since UTF-8 is ASCII-compatible, it would work too
+        // 0x40 is the ASCII code for @, and since UTF-8 is ASCII-compatible, it would
+        // work too
         #[cfg(uds_linux_namespace)]
         if self.to_bytes().first() == Some(&0x40) {
             let without_at_sign = &self.to_bytes_with_nul()[1..];
@@ -398,14 +456,19 @@ impl<'a> ToUdSocketPath<'a> for &'a CStr {
                 // terminator or is that nul terminator itself if the first one is an @ sign
                 CStr::from_bytes_with_nul_unchecked(without_at_sign)
             };
-            // Use early return to simplify the conditional inclusion for the @ syntax check.
+            // Use early return to simplify the conditional inclusion for the @ syntax
+            // check.
             return Ok(UdSocketPath::Namespaced(Cow::Borrowed(without_at_sign)));
         }
         Ok(UdSocketPath::File(Cow::Borrowed(self)))
     }
 }
 impl ToUdSocketPath<'static> for CString {
-    /// Converts an owned [`CString`] to a borrowed `UdSocketPath` with the same lifetime. On platforms which don't support [namespaced socket paths], the variant is always [`File`]; on Linux, which supports namespaced sockets, an extra check for the `@` character is performed. See the trait-level documentation for more.
+    /// Converts an owned [`CString`] to a borrowed `UdSocketPath` with the same
+    /// lifetime. On platforms which don't support [namespaced socket paths],
+    /// the variant is always [`File`]; on Linux, which supports namespaced
+    /// sockets, an extra check for the `@` character is performed. See the
+    /// trait-level documentation for more.
     ///
     /// [`CString`]: https://doc.rust-lang.org/std/ffi/struct.CString.html " "
     /// [`File`]: enum.UdSocketPath.html#file " "
@@ -421,16 +484,23 @@ impl ToUdSocketPath<'static> for CString {
                     CString::from_vec_unchecked(without_at_sign)
                 }
             };
-            // As in the CStr impl, we're using an early return to simplify conditional compilation
+            // As in the CStr impl, we're using an early return to simplify conditional
+            // compilation
             return Ok(UdSocketPath::Namespaced(Cow::Owned(without_at_sign)));
         }
         Ok(UdSocketPath::File(Cow::Owned(self)))
     }
 }
 impl<'a> ToUdSocketPath<'a> for &'a OsStr {
-    /// Converts a borrowed [`OsStr`] to a borrowed `UdSocketPath` with the same lifetime. On platforms which don't support [namespaced socket paths], the variant is always [`File`]; on Linux, which supports namespaced sockets, an extra check for the `@` character is performed. See the trait-level documentation for more.
+    /// Converts a borrowed [`OsStr`] to a borrowed `UdSocketPath` with the same
+    /// lifetime. On platforms which don't support [namespaced socket paths],
+    /// the variant is always [`File`]; on Linux, which supports namespaced
+    /// sockets, an extra check for the `@` character is performed. See the
+    /// trait-level documentation for more.
     ///
-    /// If the provided string is not nul-terminated, a nul terminator is automatically added by copying the string into owned storage and adding a nul byte on its end.
+    /// If the provided string is not nul-terminated, a nul terminator is
+    /// automatically added by copying the string into owned storage and adding
+    /// a nul byte on its end.
     ///
     /// [`OsStr`]: https://doc.rust-lang.org/std/ffi/struct.OsStr.html " "
     /// [`File`]: enum.UdSocketPath.html#file " "
@@ -461,9 +531,15 @@ impl<'a> ToUdSocketPath<'a> for &'a OsStr {
     }
 }
 impl ToUdSocketPath<'static> for OsString {
-    /// Converts a borrowed [`OsString`] to an owned `UdSocketPath`. On platforms which don't support [namespaced socket paths], the variant is always [`File`]; on Linux, which supports namespaced sockets, an extra check for the `@` character is performed. See the trait-level documentation for more.
+    /// Converts a borrowed [`OsString`] to an owned `UdSocketPath`. On
+    /// platforms which don't support [namespaced socket paths], the variant is
+    /// always [`File`]; on Linux, which supports namespaced sockets, an extra
+    /// check for the `@` character is performed. See the trait-level
+    /// documentation for more.
     ///
-    /// If the provided string is not nul-terminated, a nul terminator is automatically added by copying the string into owned storage and adding a nul byte on its end.
+    /// If the provided string is not nul-terminated, a nul terminator is
+    /// automatically added by copying the string into owned storage and adding
+    /// a nul byte on its end.
     ///
     /// [`OsString`]: https://doc.rust-lang.org/std/ffi/struct.OsString.html " "
     /// [`File`]: enum.UdSocketPath.html#file " "
@@ -483,9 +559,12 @@ impl ToUdSocketPath<'static> for OsString {
     }
 }
 impl<'a> ToUdSocketPath<'a> for &'a Path {
-    /// Converts a borrowed [`Path`] to a borrowed [`UdSocketPath::File`] with the same lifetime.
+    /// Converts a borrowed [`Path`] to a borrowed [`UdSocketPath::File`] with
+    /// the same lifetime.
     ///
-    /// If the provided string is not nul-terminated, a nul terminator is automatically added by copying the string into owned storage and adding a nul byte on its end.
+    /// If the provided string is not nul-terminated, a nul terminator is
+    /// automatically added by copying the string into owned storage and adding
+    /// a nul byte on its end.
     ///
     /// [`Path`]: https://doc.rust-lang.org/std/path/struct.Path.html " "
     /// [`UdSocketPath::File`]: struct.UdSocketPath.html#file " "
@@ -504,7 +583,9 @@ impl<'a> ToUdSocketPath<'a> for &'a Path {
 impl ToUdSocketPath<'static> for PathBuf {
     /// Converts an owned [`PathBuf`] to an owned [`UdSocketPath::File`].
     ///
-    /// If the provided string is not nul-terminated, a nul terminator is automatically added by copying the string into owned storage and adding a nul byte on its end.
+    /// If the provided string is not nul-terminated, a nul terminator is
+    /// automatically added by copying the string into owned storage and adding
+    /// a nul byte on its end.
     ///
     /// [`PathBuf`]: https://doc.rust-lang.org/std/path/struct.PathBuf.html " "
     /// [`UdSocketPath::File`]: struct.UdSocketPath.html#file " "
@@ -514,9 +595,17 @@ impl ToUdSocketPath<'static> for PathBuf {
     }
 }
 impl<'a> ToUdSocketPath<'a> for &'a str {
-    /// Converts a borrowed [`str`] to a borrowed `UdSocketPath` with the same lifetime. On platforms which don't support [namespaced socket paths], the variant is always [`File`]; on Linux, which supports namespaced sockets, an extra check for the `@` character is performed. See the trait-level documentation for more.
+    /// Converts a borrowed [`str`] to a borrowed `UdSocketPath` with the same
+    /// lifetime. On platforms which don't support [namespaced socket paths],
+    /// the variant is always [`File`]; on Linux, which supports namespaced
+    /// sockets, an extra check for the `@` character is performed. See the
+    /// trait-level documentation for more.
     ///
-    /// If the provided string is not nul-terminated, a nul terminator is automatically added by copying the string into owned storage and adding a nul byte on its end. This is done to support normal string literals, since adding `\0` at the end of every single socket name string is tedious and unappealing.
+    /// If the provided string is not nul-terminated, a nul terminator is
+    /// automatically added by copying the string into owned storage and adding
+    /// a nul byte on its end. This is done to support normal string literals,
+    /// since adding `\0` at the end of every single socket name string is
+    /// tedious and unappealing.
     ///
     /// [`str`]: https://doc.rust-lang.org/std/primitive.str.html " "
     /// [`File`]: enum.UdSocketPath.html#file " "
@@ -548,9 +637,15 @@ impl<'a> ToUdSocketPath<'a> for &'a str {
     }
 }
 impl ToUdSocketPath<'static> for String {
-    /// Converts an owned [`String`] to an owned `UdSocketPath`. On platforms which don't support [namespaced socket paths], the variant is always [`File`]; on Linux, which supports namespaced sockets, an extra check for the `@` character is performed. See the trait-level documentation for more.
+    /// Converts an owned [`String`] to an owned `UdSocketPath`. On platforms
+    /// which don't support [namespaced socket paths], the variant is always
+    /// [`File`]; on Linux, which supports namespaced sockets, an extra check
+    /// for the `@` character is performed. See the trait-level documentation
+    /// for more.
     ///
-    /// If the provided string is not nul-terminated, a nul terminator is automatically added by copying the string into owned storage and adding a nul byte on its end.
+    /// If the provided string is not nul-terminated, a nul terminator is
+    /// automatically added by copying the string into owned storage and adding
+    /// a nul byte on its end.
     ///
     /// [`String`]: https://doc.rust-lang.org/std/string/struct.String.html " "
     /// [`File`]: enum.UdSocketPath.html#file " "

@@ -56,9 +56,11 @@ impl LocalSocketListener {
             inner: Arc::new(unblock(move || sync::LocalSocketListener::bind(name)).await?),
         })
     }
-    /// Listens for incoming connections to the socket, blocking until a client is connected.
+    /// Listens for incoming connections to the socket, blocking until a client
+    /// is connected.
     ///
-    /// See [`incoming`] for a convenient way to create a main loop for a server.
+    /// See [`incoming`] for a convenient way to create a main loop for a
+    /// server.
     ///
     /// [`incoming`]: #method.incoming " "
     pub async fn accept(&self) -> io::Result<LocalSocketStream> {
@@ -67,10 +69,13 @@ impl LocalSocketListener {
             inner: Unblock::new(unblock(move || s.accept()).await?),
         })
     }
-    /// Creates an infinite asynchronous stream which calls `accept()` with each iteration. Used together with [`for_each`]/[`try_for_each`] stream adaptors to conveniently create a main loop for a socket server.
+    /// Creates an infinite asynchronous stream which calls `accept()` with each
+    /// iteration. Used together with [`for_each`]/[`try_for_each`] stream
+    /// adaptors to conveniently create a main loop for a socket server.
     ///
     /// # Example
-    /// See struct-level documentation for a complete example which already uses this method.
+    /// See struct-level documentation for a complete example which already uses
+    /// this method.
     ///
     /// [`for_each`]: https://docs.rs/futures/*/futures/stream/trait.StreamExt.html#method.for_each " "
     /// [`try_for_each`]: https://docs.rs/futures/*/futures/stream/trait.TryStreamExt.html#method.try_for_each " "
@@ -83,9 +88,11 @@ impl LocalSocketListener {
     }
 }
 
-/// An infinite asynchronous stream over incoming client connections of a [`LocalSocketListener`].
+/// An infinite asynchronous stream over incoming client connections of a
+/// [`LocalSocketListener`].
 ///
-/// This stream is created by the [`incoming`] method on [`LocalSocketListener`] — see its documentation for more.
+/// This stream is created by the [`incoming`] method on [`LocalSocketListener`]
+/// — see its documentation for more.
 ///
 /// [`LocalSocketListener`]: struct.LocalSocketListener.html " "
 /// [`incoming`]: struct.LocalSocketListener.html#method.incoming " "
@@ -107,7 +114,7 @@ impl Stream for Incoming {
                     Err(error) => Err(error),
                 });
                 Poll::Ready(val)
-            }
+            },
             Poll::Pending => Poll::Pending,
         }
     }
@@ -130,7 +137,8 @@ impl Iterator for SyncArcIncoming {
     }
 }
 
-/// An asynchronous local socket byte stream, obtained eiter from [`LocalSocketListener`] or by connecting to an existing local socket.
+/// An asynchronous local socket byte stream, obtained eiter from
+/// [`LocalSocketListener`] or by connecting to an existing local socket.
 ///
 /// # Example
 /// ```no_run

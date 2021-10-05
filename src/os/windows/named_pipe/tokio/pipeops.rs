@@ -24,7 +24,9 @@ pub enum PipeOps {
     Server(Mutex<TokioNPServer>),
 }
 impl PipeOps {
-    /// Creates a `PipeOps` from a raw Windows API handle. The `server` argument specifies whether it should convert to a Tokio named pipe server struct or a client struct.
+    /// Creates a `PipeOps` from a raw Windows API handle. The `server` argument
+    /// specifies whether it should convert to a Tokio named pipe server struct
+    /// or a client struct.
     ///
     /// # Safety
     /// See safety notes on Tokio's `from_raw_handle` on relevant types.
@@ -128,15 +130,15 @@ impl PipeOps {
                 unimplemented!(
                     "named pipes on the client side cannot be disconnected without flushing"
                 )
-            }
+            },
             PipeOps::Server(s) => l!(s).disconnect(),
         }
     }
     pub fn server_drop_disconnect(&self) {
         let _ = self.disconnect();
     }
-    // See the accept method body on the listener implementation for an explanation of what those
-    // methods are for.
+    // See the accept method body on the listener implementation for an explanation
+    // of what those methods are for.
     pub async fn dry_read(&self) {
         DryRead(self).await;
     }
@@ -173,7 +175,8 @@ impl AsRawHandle for PipeOps {
     }
 }
 
-// Distinct from the non-async PipeStreamInternals which uses the non-async PipeOps.
+// Distinct from the non-async PipeStreamInternals which uses the non-async
+// PipeOps.
 pub trait PipeStreamInternals {
     fn build(instance: Arc<(PipeOps, AtomicBool)>) -> Self;
 }

@@ -4,10 +4,18 @@ use super::{
     super::{close_by_error, handle_fd_error},
     imports::*,
     util::{
-        check_ancillary_unsound, enable_passcred, mk_msghdr_r, mk_msghdr_w, raw_get_nonblocking,
-        raw_set_nonblocking, raw_shutdown,
+        check_ancillary_unsound,
+        enable_passcred,
+        mk_msghdr_r,
+        mk_msghdr_w,
+        raw_get_nonblocking,
+        raw_set_nonblocking,
+        raw_shutdown,
     },
-    AncillaryData, AncillaryDataBuf, EncodedAncillaryData, ToUdSocketPath,
+    AncillaryData,
+    AncillaryDataBuf,
+    EncodedAncillaryData,
+    ToUdSocketPath,
 };
 use std::{
     fmt::{self, Debug, Formatter},
@@ -18,7 +26,8 @@ use std::{
 };
 use to_method::To;
 
-/// A Unix domain socket byte stream, obtained either from [`UdStreamListener`] or by connecting to an existing server.
+/// A Unix domain socket byte stream, obtained either from [`UdStreamListener`]
+/// or by connecting to an existing server.
 ///
 /// # Examples
 /// Basic example:
@@ -127,7 +136,8 @@ impl UdStream {
     /// # }
     /// # Ok(()) }
     /// ```
-    /// See [`ToUdSocketPath`] for an example of using various string types to specify socket paths.
+    /// See [`ToUdSocketPath`] for an example of using various string types to
+    /// specify socket paths.
     ///
     /// # System calls
     /// - `socket`
@@ -168,7 +178,8 @@ impl UdStream {
     pub fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.fd.read(buf)
     }
-    /// Receives bytes from the socket stream, making use of [scatter input] for the main data.
+    /// Receives bytes from the socket stream, making use of [scatter input] for
+    /// the main data.
     ///
     /// # System calls
     /// - `readv`
@@ -179,7 +190,9 @@ impl UdStream {
     }
     /// Receives both bytes and ancillary data from the socket stream.
     ///
-    /// The ancillary data buffer is automatically converted from the supplied value, if possible. For that reason, mutable slices of bytes (`u8` values) can be passed directly.
+    /// The ancillary data buffer is automatically converted from the supplied
+    /// value, if possible. For that reason, mutable slices of bytes (`u8`
+    /// values) can be passed directly.
     ///
     /// # System calls
     /// - `recvmsg`
@@ -191,9 +204,12 @@ impl UdStream {
         check_ancillary_unsound()?;
         self.recv_ancillary_vectored(&mut [IoSliceMut::new(buf)], abuf)
     }
-    /// Receives bytes and ancillary data from the socket stream, making use of [scatter input] for the main data.
+    /// Receives bytes and ancillary data from the socket stream, making use of
+    /// [scatter input] for the main data.
     ///
-    /// The ancillary data buffer is automatically converted from the supplied value, if possible. For that reason, mutable slices of bytes (`u8` values) can be passed directly.
+    /// The ancillary data buffer is automatically converted from the supplied
+    /// value, if possible. For that reason, mutable slices of bytes (`u8`
+    /// values) can be passed directly.
     ///
     /// # System calls
     /// - `recvmsg`
@@ -225,7 +241,8 @@ impl UdStream {
     pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
         self.fd.write(buf)
     }
-    /// Sends bytes into the socket stream, making use of [gather output] for the main data.
+    /// Sends bytes into the socket stream, making use of [gather output] for
+    /// the main data.
     ///
     /// # System calls
     /// - `senv`
@@ -236,7 +253,9 @@ impl UdStream {
     }
     /// Sends bytes and ancillary data into the socket stream.
     ///
-    /// The ancillary data buffer is automatically converted from the supplied value, if possible. For that reason, slices and `Vec`s of `AncillaryData` can be passed directly.
+    /// The ancillary data buffer is automatically converted from the supplied
+    /// value, if possible. For that reason, slices and `Vec`s of
+    /// `AncillaryData` can be passed directly.
     ///
     /// # System calls
     /// - `sendmsg`
@@ -249,9 +268,12 @@ impl UdStream {
         self.send_ancillary_vectored(&[IoSlice::new(buf)], ancillary_data)
     }
 
-    /// Sends bytes and ancillary data into the socket stream, making use of [gather output] for the main data.
+    /// Sends bytes and ancillary data into the socket stream, making use of
+    /// [gather output] for the main data.
     ///
-    /// The ancillary data buffer is automatically converted from the supplied value, if possible. For that reason, slices and `Vec`s of `AncillaryData` can be passed directly.
+    /// The ancillary data buffer is automatically converted from the supplied
+    /// value, if possible. For that reason, slices and `Vec`s of
+    /// `AncillaryData` can be passed directly.
     ///
     /// # System calls
     /// - `sendmsg`
@@ -264,9 +286,7 @@ impl UdStream {
         ancillary_data: impl IntoIterator<Item = AncillaryData<'a>>,
     ) -> io::Result<(usize, usize)> {
         check_ancillary_unsound()?;
-        let abuf = ancillary_data
-            .into_iter()
-            .collect::<EncodedAncillaryData<'_>>();
+        let abuf = ancillary_data.into_iter().collect::<EncodedAncillaryData<'_>>();
         let hdr = mk_msghdr_w(bufs, abuf.as_ref())?;
         let (success, bytes_written) = unsafe {
             let result = libc::sendmsg(self.as_raw_fd(), &hdr as *const _, 0);
@@ -279,16 +299,27 @@ impl UdStream {
         }
     }
 
-    /// Shuts down the read, write, or both halves of the stream. See [`Shutdown`].
+    /// Shuts down the read, write, or both halves of the stream. See
+    /// [`Shutdown`].
     ///
-    /// Attempting to call this method with the same `how` argument multiple times may return `Ok(())` every time or it may return an error the second time it is called, depending on the platform. You must either avoid using the same value twice or ignore the error entirely.
+    /// Attempting to call this method with the same `how` argument multiple
+    /// times may return `Ok(())` every time or it may return an error the
+    /// second time it is called, depending on the platform. You must either
+    /// avoid using the same value twice or ignore the error entirely.
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
         unsafe { raw_shutdown(self.as_raw_fd(), how) }
     }
 
-    /// Enables or disables the nonblocking mode for the stream. By default, it is disabled.
+    /// Enables or disables the nonblocking mode for the stream. By default, it
+    /// is disabled.
     ///
-    /// In nonblocking mode, calls to the `recv…` methods and the `Read` trait methods will never wait for at least one byte of data to become available; calls to `send…` methods and the `Write` trait methods will never wait for the other side to remove enough bytes from the buffer for the write operation to be performed. Those operations will instead return a [`WouldBlock`] error immediately, allowing the thread to perform other useful operations in the meantime.
+    /// In nonblocking mode, calls to the `recv…` methods and the `Read` trait
+    /// methods will never wait for at least one byte of data to become
+    /// available; calls to `send…` methods and the `Write` trait methods will
+    /// never wait for the other side to remove enough bytes from the buffer for
+    /// the write operation to be performed. Those operations will instead
+    /// return a [`WouldBlock`] error immediately, allowing the thread to
+    /// perform other useful operations in the meantime.
     ///
     /// [`accept`]: #method.accept " "
     /// [`incoming`]: #method.incoming " "
@@ -301,7 +332,9 @@ impl UdStream {
         unsafe { raw_get_nonblocking(self.fd.0) }
     }
 
-    /// Fetches the credentials of the other end of the connection without using ancillary data. The returned structure contains the process identifier, user identifier and group identifier of the peer.
+    /// Fetches the credentials of the other end of the connection without using
+    /// ancillary data. The returned structure contains the process identifier,
+    /// user identifier and group identifier of the peer.
     #[cfg(any(doc, uds_peercred))]
     #[cfg_attr( // uds_peercred template
         feature = "doc_cfg",
@@ -338,8 +371,7 @@ impl Write for UdStream {
         self.fd.write(buf)
     }
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        self.send_ancillary_vectored(bufs, iter::empty())
-            .map(|x| x.0)
+        self.send_ancillary_vectored(bufs, iter::empty()).map(|x| x.0)
     }
     fn flush(&mut self) -> io::Result<()> {
         // You cannot flush a socket
@@ -348,9 +380,7 @@ impl Write for UdStream {
 }
 impl Debug for UdStream {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("UdStream")
-            .field("file_descriptor", &self.as_raw_fd())
-            .finish()
+        f.debug_struct("UdStream").field("file_descriptor", &self.as_raw_fd()).finish()
     }
 }
 #[cfg(unix)]

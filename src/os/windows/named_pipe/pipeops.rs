@@ -10,7 +10,11 @@ use std::{
 #[repr(transparent)]
 pub struct PipeOps(pub(crate) FileHandleOps);
 impl PipeOps {
-    /// Reads a message from the pipe instance into the specified buffer, returning the size of the message written as `Ok(Ok(...))`. If the buffer is too small to fit the message, a bigger buffer is allocated and returned as `Ok(Err(...))`, with the exact size and capacity to hold the message. Errors are returned as `Err(Err(...))`.
+    /// Reads a message from the pipe instance into the specified buffer,
+    /// returning the size of the message written as `Ok(Ok(...))`. If the
+    /// buffer is too small to fit the message, a bigger buffer is allocated and
+    /// returned as `Ok(Err(...))`, with the exact size and capacity to hold the
+    /// message. Errors are returned as `Err(Err(...))`.
     pub fn read_msg(&self, buf: &mut [u8]) -> io::Result<Result<usize, Vec<u8>>> {
         match self.try_read_msg(buf)? {
             Ok(bytes_read) => Ok(Ok(bytes_read)),
@@ -31,7 +35,7 @@ impl PipeOps {
                 } else {
                     Err(io::Error::last_os_error())
                 }
-            }
+            },
         }
     }
     pub fn try_read_msg(&self, buf: &mut [u8]) -> io::Result<Result<usize, usize>> {
@@ -55,7 +59,8 @@ impl PipeOps {
             bytes_left_in_message as usize
         };
         if buf.len() >= bytes_left_in_message {
-            // We already know the exact size of the message which is why this does not matter
+            // We already know the exact size of the message which is why this does not
+            // matter
             let mut _number_of_bytes_read: DWORD = 0;
             let success = unsafe {
                 ReadFile(
@@ -79,7 +84,9 @@ impl PipeOps {
     pub fn read_bytes(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.read(buf)
     }
-    /// Writes data to the named pipe. There is no way to check/ensure that the message boundaries will be preserved which is why there's only one function to do this.
+    /// Writes data to the named pipe. There is no way to check/ensure that the
+    /// message boundaries will be preserved which is why there's only one
+    /// function to do this.
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
     }
@@ -145,7 +152,8 @@ impl PipeOps {
         self.disconnect()?;
         Ok(())
     }
-    /// Disconnects without flushing. Drops all data which has been sent but not yet received on the other side, if any.
+    /// Disconnects without flushing. Drops all data which has been sent but not
+    /// yet received on the other side, if any.
     pub fn disconnect(&self) -> io::Result<()> {
         let success = unsafe { DisconnectNamedPipe(self.as_raw_handle()) != 0 };
         if success {
@@ -154,7 +162,9 @@ impl PipeOps {
             Err(io::Error::last_os_error())
         }
     }
-    /// Called by pipe streams when dropped, used to abstract over the fact that non-async streams flush before returning the pipe to the server while async ones don't.
+    /// Called by pipe streams when dropped, used to abstract over the fact that
+    /// non-async streams flush before returning the pipe to the server while
+    /// async ones don't.
     pub fn server_drop_disconnect(&self) {
         let _ = self.flush_and_disconnect();
     }
@@ -179,9 +189,12 @@ impl FromRawHandle for PipeOps {
         Self(fho)
     }
 }
-// SAFETY: we don't expose reading/writing for immutable references of PipeInstance
-unsafe impl Sync for PipeOps {}
-unsafe impl Send for PipeOps {}
+// SAFETY: we don't expose reading/writing for immutable references of
+// PipeInstance
+unsafe impl Sync for PipeOps {
+}
+unsafe impl Send for PipeOps {
+}
 
 pub trait PipeStreamInternals {
     fn build(instance: Arc<(PipeOps, AtomicBool)>) -> Self;

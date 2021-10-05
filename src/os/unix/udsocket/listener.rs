@@ -2,7 +2,8 @@ use super::{
     super::{close_by_error, handle_fd_error},
     imports::*,
     util::{enable_passcred, raw_get_nonblocking, raw_set_nonblocking},
-    ToUdSocketPath, UdStream,
+    ToUdSocketPath,
+    UdStream,
 };
 use std::{
     fmt::{self, Debug, Formatter},
@@ -14,7 +15,8 @@ use to_method::To;
 
 /// A Unix domain byte stream socket server, listening for connections.
 ///
-/// All such sockets have the `SOCK_STREAM` socket type; in other words, this is the Unix domain version of a TCP server.
+/// All such sockets have the `SOCK_STREAM` socket type; in other words, this is
+/// the Unix domain version of a TCP server.
 ///
 /// # Examples
 /// Basic server:
@@ -146,7 +148,11 @@ pub struct UdStreamListener {
 impl UdStreamListener {
     /// Creates a new listener socket at the specified address.
     ///
-    /// If the socket path exceeds the [maximum socket path length] (which includes the first 0 byte when using the [socket namespace]), an error is returned. Errors can also be produced for different reasons, i.e. errors should always be handled regardless of whether the path is known to be short enough or not.
+    /// If the socket path exceeds the [maximum socket path length] (which
+    /// includes the first 0 byte when using the [socket namespace]), an error
+    /// is returned. Errors can also be produced for different reasons, i.e.
+    /// errors should always be handled regardless of whether the path is known
+    /// to be short enough or not.
     ///
     /// # Example
     /// See [`ToUdSocketPath`].
@@ -204,9 +210,11 @@ impl UdStreamListener {
         })
     }
 
-    /// Listens for incoming connections to the socket, blocking until a client is connected.
+    /// Listens for incoming connections to the socket, blocking until a client
+    /// is connected.
     ///
-    /// See [`incoming`] for a convenient way to create a main loop for a server.
+    /// See [`incoming`] for a convenient way to create a main loop for a
+    /// server.
     ///
     /// # Example
     /// ```no_run
@@ -249,7 +257,9 @@ impl UdStreamListener {
         }
     }
 
-    /// Creates an infinite iterator which calls `accept()` with each iteration. Used together with `for` loops to conveniently create a main loop for a socket server.
+    /// Creates an infinite iterator which calls `accept()` with each iteration.
+    /// Used together with `for` loops to conveniently create a main loop for a
+    /// socket server.
     ///
     /// # Example
     /// ```no_run
@@ -272,9 +282,14 @@ impl UdStreamListener {
         Incoming::from(self)
     }
 
-    /// Enables or disables the nonblocking mode for the listener. By default, it is disabled.
+    /// Enables or disables the nonblocking mode for the listener. By default,
+    /// it is disabled.
     ///
-    /// In nonblocking mode, calls to [`accept`], and, by extension, iteration through [`incoming`] will never wait for a client to become available to connect and will instead return a [`WouldBlock`] error immediately, allowing the thread to perform other useful operations while there are no new client connections to accept.
+    /// In nonblocking mode, calls to [`accept`], and, by extension, iteration
+    /// through [`incoming`] will never wait for a client to become available to
+    /// connect and will instead return a [`WouldBlock`] error immediately,
+    /// allowing the thread to perform other useful operations while there are
+    /// no new client connections to accept.
     ///
     /// [`accept`]: #method.accept " "
     /// [`incoming`]: #method.incoming " "
@@ -289,9 +304,7 @@ impl UdStreamListener {
 }
 impl Debug for UdStreamListener {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("UdStreamListener")
-            .field("file_descriptor", &self.as_raw_fd())
-            .finish()
+        f.debug_struct("UdStreamListener").field("file_descriptor", &self.as_raw_fd()).finish()
     }
 }
 #[cfg(unix)]
@@ -313,9 +326,11 @@ impl FromRawFd for UdStreamListener {
     }
 }
 
-/// An infinite iterator over incoming client connections of a [`UdStreamListener`].
+/// An infinite iterator over incoming client connections of a
+/// [`UdStreamListener`].
 ///
-/// This iterator is created by the [`incoming`] method on [`UdStreamListener`] — see its documentation for more.
+/// This iterator is created by the [`incoming`] method on [`UdStreamListener`]
+/// — see its documentation for more.
 ///
 /// [`UdStreamListener`]: struct.UdStreamListener.html " "
 /// [`incoming`]: struct.UdStreamListener.html#method.incoming " "
@@ -331,7 +346,8 @@ impl<'a> Iterator for Incoming<'a> {
         (usize::MAX, None)
     }
 }
-impl FusedIterator for Incoming<'_> {}
+impl FusedIterator for Incoming<'_> {
+}
 impl<'a> From<&'a UdStreamListener> for Incoming<'a> {
     fn from(listener: &'a UdStreamListener) -> Self {
         Self { listener }

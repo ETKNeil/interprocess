@@ -8,7 +8,7 @@ fn main() {
             Err(error) => {
                 eprintln!("\n");
                 panic!("Incoming connection failed: {}", error);
-            }
+            },
         }
     }
 

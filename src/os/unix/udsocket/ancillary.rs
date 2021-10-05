@@ -6,32 +6,42 @@ use std::{
     mem::size_of,
 };
 
-/// Ancillary data to be sent through a Unix domain socket or read from an input buffer.
+/// Ancillary data to be sent through a Unix domain socket or read from an input
+/// buffer.
 ///
-/// Ancillary data gives unique possibilities to Unix domain sockets which no other POSIX API has: passing file descriptors between two processes which do not have a parent-child relationship. It also can be used to transfer credentials of a process reliably.
+/// Ancillary data gives unique possibilities to Unix domain sockets which no
+/// other POSIX API has: passing file descriptors between two processes which do
+/// not have a parent-child relationship. It also can be used to transfer
+/// credentials of a process reliably.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum AncillaryData<'a> {
     /// One or more file descriptors to be sent.
     FileDescriptors(Cow<'a, [c_int]>),
-    /// Credentials to be sent. The specified values are checked by the system when sent for all users except for the superuser — for senders, this means that the correct values need to be filled out, otherwise, an error is returned; for receivers, this means that the credentials are to be trusted for authentification purposes. For convenience, the [`credentials`] function provides a value which is known to be valid when sent.
+    /// Credentials to be sent. The specified values are checked by the system
+    /// when sent for all users except for the superuser — for senders, this
+    /// means that the correct values need to be filled out, otherwise, an error
+    /// is returned; for receivers, this means that the credentials are to be
+    /// trusted for authentification purposes. For convenience, the
+    /// [`credentials`] function provides a value which is known to be valid
+    /// when sent.
     ///
     /// [`credentials`]: #method.credentials " "
     #[cfg(any(doc, uds_ucred))]
     #[cfg_attr( // uds_ucred template
-        feature = "doc_cfg",
-        doc(cfg(any(
-            all(
-                target_os = "linux",
-                any(
-                    target_env = "gnu",
-                    target_env = "musl",
-                    target_env = "musleabi",
-                    target_env = "musleabihf"
-                )
-            ),
-            target_os = "emscripten",
-            target_os = "redox"
-        )))
+    feature = "doc_cfg",
+    doc(cfg(any(
+    all(
+    target_os = "linux",
+    any(
+    target_env = "gnu",
+    target_env = "musl",
+    target_env = "musleabi",
+    target_env = "musleabihf"
+    )
+    ),
+    target_os = "emscripten",
+    target_os = "redox"
+    )))
     )]
     Credentials {
         /// The process identificator (PID) for the process.
@@ -43,7 +53,9 @@ pub enum AncillaryData<'a> {
     },
 }
 impl<'a> AncillaryData<'a> {
-    /// The size of a single `AncillaryData::Credentials` element when packed into the Unix ancillary data format. Useful for allocating a buffer when you expect to receive credentials.
+    /// The size of a single `AncillaryData::Credentials` element when packed
+    /// into the Unix ancillary data format. Useful for allocating a buffer when
+    /// you expect to receive credentials.
     pub const ENCODED_SIZE_OF_CREDENTIALS: usize = Self::_ENCODED_SIZE_OF_CREDENTIALS;
     cfg_if! {
         if #[cfg(uds_ucred)] {
@@ -57,12 +69,16 @@ impl<'a> AncillaryData<'a> {
         }
     }
 
-    /// Calculates the size of an `AncillaryData::FileDescriptors` element with the specified amount of file descriptors when packed into the Unix ancillary data format. Useful for allocating a buffer when you expect to receive a specific amount of file descriptors.
+    /// Calculates the size of an `AncillaryData::FileDescriptors` element with
+    /// the specified amount of file descriptors when packed into the Unix
+    /// ancillary data format. Useful for allocating a buffer when you expect to
+    /// receive a specific amount of file descriptors.
     pub const fn encoded_size_of_file_descriptors(num_descriptors: usize) -> usize {
         size_of::<cmsghdr>() + num_descriptors * size_of::<pid_t>()
     }
 
-    /// Inexpensievly clones `self` by borrowing the `FileDescriptors` variant or copying the `Credentials` variant.
+    /// Inexpensievly clones `self` by borrowing the `FileDescriptors` variant
+    /// or copying the `Credentials` variant.
     pub fn clone_ref(&'a self) -> Self {
         match *self {
             Self::FileDescriptors(ref fds) => Self::FileDescriptors(Cow::Borrowed(fds)),
@@ -71,7 +87,8 @@ impl<'a> AncillaryData<'a> {
         }
     }
 
-    /// Returns the size of an ancillary data element when packed into the Unix ancillary data format.
+    /// Returns the size of an ancillary data element when packed into the Unix
+    /// ancillary data format.
     pub fn encoded_size(&self) -> usize {
         match self {
             Self::FileDescriptors(fds) => Self::encoded_size_of_file_descriptors(fds.len()),
@@ -80,14 +97,16 @@ impl<'a> AncillaryData<'a> {
         }
     }
 
-    /// Encodes the ancillary data into `EncodedAncillaryData` which is ready to be sent via a Unix domain socket.
+    /// Encodes the ancillary data into `EncodedAncillaryData` which is ready to
+    /// be sent via a Unix domain socket.
     pub fn encode(op: impl IntoIterator<Item = Self>) -> EncodedAncillaryData<'static> {
         let items = op.into_iter();
         let mut buffer = Vec::with_capacity(
             {
                 let size_hint = items.size_hint();
                 size_hint.1.unwrap_or(size_hint.0)
-                // If we assume that all ancillary data elements are credentials, we're more than fine.
+                // If we assume that all ancillary data elements are
+                // credentials, we're more than fine.
             } * Self::ENCODED_SIZE_OF_CREDENTIALS,
         );
         for i in items {
@@ -110,7 +129,7 @@ impl<'a> AncillaryData<'a> {
                         let desc_bytes = i.to_ne_bytes();
                         buffer.extend_from_slice(&desc_bytes);
                     }
-                }
+                },
                 #[cfg(uds_ucred)]
                 AncillaryData::Credentials { pid, uid, gid } => {
                     cmsg_type_bytes = SCM_RIGHTS.to_ne_bytes();
@@ -126,32 +145,36 @@ impl<'a> AncillaryData<'a> {
                     buffer.extend_from_slice(&pid_bytes);
                     buffer.extend_from_slice(&uid_bytes);
                     buffer.extend_from_slice(&gid_bytes);
-                }
+                },
             }
         }
         EncodedAncillaryData(Cow::Owned(buffer))
     }
 }
 impl AncillaryData<'static> {
-    /// Fetches the credentials of the process from the system and returns a value which can be safely sent to another process without the system complaining about an unauthorized attempt to impersonate another process/user/group.
+    /// Fetches the credentials of the process from the system and returns a
+    /// value which can be safely sent to another process without the system
+    /// complaining about an unauthorized attempt to impersonate another
+    /// process/user/group.
     ///
-    /// If you want to send credentials to another process, this is usually the function you need to obtain the desired ancillary payload.
+    /// If you want to send credentials to another process, this is usually the
+    /// function you need to obtain the desired ancillary payload.
     #[cfg(any(doc, uds_ucred))]
     #[cfg_attr( // uds_ucred template
     feature = "doc_cfg",
-        doc(cfg(any(
-            all(
-                target_os = "linux",
-                any(
-                    target_env = "gnu",
-                    target_env = "musl",
-                    target_env = "musleabi",
-                    target_env = "musleabihf"
-                )
-            ),
-            target_os = "emscripten",
-            target_os = "redox"
-        )))
+    doc(cfg(any(
+    all(
+    target_os = "linux",
+    any(
+    target_env = "gnu",
+    target_env = "musl",
+    target_env = "musleabi",
+    target_env = "musleabihf"
+    )
+    ),
+    target_os = "emscripten",
+    target_os = "redox"
+    )))
     )]
     pub fn credentials() -> Self {
         Self::Credentials {
@@ -202,7 +225,8 @@ impl<'a> AsRef<[u8]> for EncodedAncillaryData<'a> {
 /// The actual ancillary data can be obtained using the [`decode`] method.
 ///
 /// # Example
-/// See [`UdStream`] or [`UdStreamListener`] for an example of receiving ancillary data.
+/// See [`UdStream`] or [`UdStreamListener`] for an example of receiving
+/// ancillary data.
 ///
 /// [`decode`]: #method.decode " "
 /// [`UdStream`]: struct.UdStream.html#examples " "
@@ -219,13 +243,18 @@ impl<'a> AncillaryDataBuf<'a> {
     pub fn owned_with_capacity(capacity: usize) -> Self {
         Self::Owned(Vec::with_capacity(capacity))
     }
-    /// Creates a decoder which decodes the ancillary data buffer into a friendly representation of its contents.
+    /// Creates a decoder which decodes the ancillary data buffer into a
+    /// friendly representation of its contents.
     ///
-    /// All invalid ancillary data blocks are skipped — if there was garbage data in the buffer to begin with, the resulting buffer will either be empty or contain invalid credentials/file descriptors. This should normally never happen if the data is actually received from a Unix domain socket.
+    /// All invalid ancillary data blocks are skipped — if there was garbage
+    /// data in the buffer to begin with, the resulting buffer will either be
+    /// empty or contain invalid credentials/file descriptors. This should
+    /// normally never happen if the data is actually received from a Unix
+    /// domain socket.
     pub fn decode(&'a self) -> AncillaryDataDecoder<'a> {
         AncillaryDataDecoder {
             buffer: self.as_ref(),
-            i: 0,
+            i:      0,
         }
     }
 }
@@ -266,14 +295,15 @@ impl<'a> AsMut<[u8]> for AncillaryDataBuf<'a> {
 
 /// An iterator which decodes ancillary data from an ancillary data buffer.
 ///
-/// This iterator is created by the [`decode`] method on [`AncillaryDataBuf`] — see its documentation for more.
+/// This iterator is created by the [`decode`] method on [`AncillaryDataBuf`] —
+/// see its documentation for more.
 ///
 /// [`AncillaryDataBuf`]: struct.AncillaryDataBuf.html " "
 /// [`decode`]: struct.AncillaryDataBuf.html#method.decode " "
 #[derive(Clone, Debug)]
 pub struct AncillaryDataDecoder<'a> {
     buffer: &'a [u8],
-    i: usize,
+    i:      usize,
 }
 impl<'a> From<&'a AncillaryDataBuf<'a>> for AncillaryDataDecoder<'a> {
     fn from(buffer: &'a AncillaryDataBuf<'a>) -> Self {
@@ -299,7 +329,8 @@ impl<'a> Iterator for AncillaryDataDecoder<'a> {
             return None;
         }
 
-        // The first field is the length of the header + payload, which is a size_t (we subtract the size of the header from it)
+        // The first field is the length of the header + payload, which is a size_t (we
+        // subtract the size of the header from it)
         #[cfg(target_pointer_width = "64")]
         let elements_size = {
             if bytes.len() - self.i < 8 {
@@ -318,18 +349,16 @@ impl<'a> Iterator for AncillaryDataDecoder<'a> {
         };
 
         // You should never have an empty payload, if it is then return
-        let elements_size=match elements_size.checked_sub(std::mem::size_of::<cmsghdr>()){
+        let elements_size = match elements_size.checked_sub(std::mem::size_of::<cmsghdr>()) {
             None => {
                 self.i = end;
                 return None;
-            }
-            Some(i) if i==0 => {
+            },
+            Some(i) if i == 0 => {
                 self.i = end;
                 return None;
-            }
-            Some(i) => {
-                i
-            }
+            },
+            Some(i) => i,
         };
 
         // The cmsg_level field is always SOL_SOCKET — we don't need it, let's get the
@@ -366,7 +395,7 @@ impl<'a> Iterator for AncillaryDataDecoder<'a> {
                     descriptor_offset += 4;
                 }
                 Some(AncillaryData::FileDescriptors(Cow::Owned(descriptors)))
-            }
+            },
             #[cfg(uds_ucred)]
             SCM_CREDENTIALS => {
                 // We're reading a single ucred structure from the ancillary data payload.
@@ -378,9 +407,10 @@ impl<'a> Iterator for AncillaryDataDecoder<'a> {
                 let gid_offset = uid_offset + 4;
                 let gid: gid_t = u32_from_slice(&bytes[gid_offset..gid_offset + 4]) as gid_t;
                 Some(AncillaryData::Credentials { pid, uid, gid })
-            }
+            },
             _ => self.next(), // Do nothing if we hit corrupted data.
         }
     }
 }
-impl FusedIterator for AncillaryDataDecoder<'_> {}
+impl FusedIterator for AncillaryDataDecoder<'_> {
+}

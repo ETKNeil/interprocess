@@ -65,9 +65,7 @@ impl LocalSocketStream {
     pub fn peer_pid(&self) -> io::Result<u32> {
         #[cfg(uds_peercred)]
         {
-            self.inner
-                .get_peer_credentials()
-                .map(|ucred| ucred.pid as u32)
+            self.inner.get_peer_credentials().map(|ucred| ucred.pid as u32)
         }
         #[cfg(not(uds_peercred))]
         {
@@ -135,7 +133,7 @@ fn local_socket_name_to_ud_socket_path(name: LocalSocketName<'_>) -> io::Result<
                     let owned = val.to_os_string();
                     Ok(Cow::Owned(CString::new(owned.into_vec())?))
                 }
-            }
+            },
             Cow::Owned(val) => Ok(Cow::Owned(CString::new(val.into_vec())?)),
         }
     }

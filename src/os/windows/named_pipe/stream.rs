@@ -1,6 +1,9 @@
 use super::{
     super::{imports::*, AsRawHandle, FromRawHandle, IntoRawHandle},
-    PipeMode, PipeOps, PipeStreamInternals, PipeStreamRole,
+    PipeMode,
+    PipeOps,
+    PipeStreamInternals,
+    PipeStreamRole,
 };
 use crate::{PartialMsgWriteError, ReliableReadMsg};
 use std::{
@@ -384,30 +387,67 @@ impl Write for DuplexMsgPipeStream {
 /// Defines the properties of pipe stream types.
 ///
 /// ## Why there are multiple types of pipe streams
-/// One of the similarities between Unix domain sockets and Windows named pipes is how both can be used in datagram mode and in byte stream mode, that is, like with sockets, Windows named pipes can both maintain the boundaries between packets or erase those boundaries — the specific behavior can be controlled both during pipe creation and during connection. The reader can still use the stream interface even if the writer maintains datagram boundaries, and vice versa: the system automatically disassembles the datagrams into a byte stream with virtually no cost.
+/// One of the similarities between Unix domain sockets and Windows named pipes
+/// is how both can be used in datagram mode and in byte stream mode, that is,
+/// like with sockets, Windows named pipes can both maintain the boundaries
+/// between packets or erase those boundaries — the specific behavior can be
+/// controlled both during pipe creation and during connection. The reader can
+/// still use the stream interface even if the writer maintains datagram
+/// boundaries, and vice versa: the system automatically disassembles the
+/// datagrams into a byte stream with virtually no cost.
 ///
-/// The distinction between datagram-oriented connections and byte streams exists for symmetry with the standard library, where UDP and TCP sockets are represented by different types. The idea behind this is that by separating the two semantic types of sockets into two types, the distinction between those semantics can be enforced at compile time instead of using runtime errors to signal that, for example, a datagram read operation is attempted on a byte stream.
+/// The distinction between datagram-oriented connections and byte streams
+/// exists for symmetry with the standard library, where UDP and TCP sockets are
+/// represented by different types. The idea behind this is that by separating
+/// the two semantic types of sockets into two types, the distinction between
+/// those semantics can be enforced at compile time instead of using runtime
+/// errors to signal that, for example, a datagram read operation is attempted
+/// on a byte stream.
 ///
-/// The fact that named pipes can have different data flow directions further increases the amount of various stream types. By restricting the implemented stream traits at compile time, named pipe streams can be used correctly in generic contexts unaware of named pipes without extra runtime checking for the correct pipe direction.
+/// The fact that named pipes can have different data flow directions further
+/// increases the amount of various stream types. By restricting the implemented
+/// stream traits at compile time, named pipe streams can be used correctly in
+/// generic contexts unaware of named pipes without extra runtime checking for
+/// the correct pipe direction.
 pub trait PipeStream: AsRawHandle + IntoRawHandle + FromRawHandle + PipeStreamInternals {
-    /// The data stream flow direction for the pipe. See the [`PipeStreamRole`] enumeration for more on what this means.
+    /// The data stream flow direction for the pipe. See the [`PipeStreamRole`]
+    /// enumeration for more on what this means.
     const ROLE: PipeStreamRole;
-    /// The data stream mode for the pipe. If set to `PipeMode::Bytes`, message boundaries will broken and having `READ_MODE` at `PipeMode::Messages` would be a pipe creation error.
+    /// The data stream mode for the pipe. If set to `PipeMode::Bytes`, message
+    /// boundaries will broken and having `READ_MODE` at `PipeMode::Messages`
+    /// would be a pipe creation error.
     ///
-    /// For reader streams, this value has no meaning: if the reader stream belongs to the server (client sends data, server receives), then `READ_MODE` takes the role of this value; if the reader stream belongs to the client, there is no visible difference to how the server writes data since the client specifies its read mode itself anyway.
+    /// For reader streams, this value has no meaning: if the reader stream
+    /// belongs to the server (client sends data, server receives), then
+    /// `READ_MODE` takes the role of this value; if the reader stream belongs
+    /// to the client, there is no visible difference to how the server writes
+    /// data since the client specifies its read mode itself anyway.
     const WRITE_MODE: Option<PipeMode>;
-    /// The data stream mode used when reading from the pipe: if `WRITE_MODE` is `PipeMode::Messages` and `READ_MODE` is `PipeMode::Bytes`, the message boundaries will be destroyed when reading even though they are retained when written. See the `PipeMode` enumeration for more on what those modes mean.
+    /// The data stream mode used when reading from the pipe: if `WRITE_MODE` is
+    /// `PipeMode::Messages` and `READ_MODE` is `PipeMode::Bytes`, the message
+    /// boundaries will be destroyed when reading even though they are retained
+    /// when written. See the `PipeMode` enumeration for more on what those
+    /// modes mean.
     ///
-    /// For writer streams, this value has no meaning: if the writer stream belongs to the server (server sends data, client receives), then the server doesn't read data at all and thus this does not affect anything; if the writer stream belongs to the client, then the client doesn't read anything and the value is meaningless as well.
+    /// For writer streams, this value has no meaning: if the writer stream
+    /// belongs to the server (server sends data, client receives), then the
+    /// server doesn't read data at all and thus this does not affect anything;
+    /// if the writer stream belongs to the client, then the client doesn't read
+    /// anything and the value is meaningless as well.
     const READ_MODE: Option<PipeMode>;
 }
 
-/// Tries to connect to the specified named pipe (the `\\.\pipe\` prefix is added automatically), returning a named pipe stream of the stream type provided via generic parameters. If there is no available server, returns immediately.
+/// Tries to connect to the specified named pipe (the `\\.\pipe\` prefix is
+/// added automatically), returning a named pipe stream of the stream type
+/// provided via generic parameters. If there is no available server, returns
+/// immediately.
 ///
-/// Since named pipes can work across multiple machines, an optional hostname can be supplied. Leave it at `None` if you're using named pipes on the local machine exclusively, which is most likely the case.
+/// Since named pipes can work across multiple machines, an optional hostname
+/// can be supplied. Leave it at `None` if you're using named pipes on the local
+/// machine exclusively, which is most likely the case.
 #[deprecated(note = "\
-poor ergonomics: you can't use turbofish syntax due to `impl AsRef<OsStr>` parameters and you \
-have to use `None::<&AsRef>` instead of just `None` to provide an empty hostname")]
+poor ergonomics: you can't use turbofish syntax due to `impl AsRef<OsStr>` parameters and you have \
+                     to use `None::<&AsRef>` instead of just `None` to provide an empty hostname")]
 pub fn connect<Stream: PipeStream>(
     pipe_name: impl AsRef<OsStr>,
     hostname: Option<impl AsRef<OsStr>>,

@@ -1,4 +1,5 @@
-//! Windows-specific functionality for various interprocess communication primitives, as well as Windows-specific ones.
+//! Windows-specific functionality for various interprocess communication
+//! primitives, as well as Windows-specific ones.
 #![cfg_attr(not(windows), allow(warnings))]
 
 pub mod named_pipe;
@@ -18,16 +19,36 @@ use std::{io, mem::ManuallyDrop, ptr};
 
 /// Objects which own handles which can be shared with another processes.
 ///
-/// On Windows, like with most other operating systems, handles belong to specific processes. You shouldn't just send the value of a handle to another process (with a named pipe, for example) and expect it to work on the other side. For this to work, you need [`DuplicateHandle`] — the Win32 API function which duplicates a handle into the handle table of the specified process (the reciever is referred to by its handle). This trait exposes the `DuplicateHandle` functionality in a safe manner. If the handle is *inheritable*, however, all child processes of a process inherit the handle and thus can use the same value safely without the need to share it. *All Windows handle objects created by this crate are inheritable.*
+/// On Windows, like with most other operating systems, handles belong to
+/// specific processes. You shouldn't just send the value of a handle to another
+/// process (with a named pipe, for example) and expect it to work on the other
+/// side. For this to work, you need [`DuplicateHandle`] — the Win32 API
+/// function which duplicates a handle into the handle table of the specified
+/// process (the reciever is referred to by its handle). This trait exposes the
+/// `DuplicateHandle` functionality in a safe manner. If the handle is
+/// *inheritable*, however, all child processes of a process inherit the handle
+/// and thus can use the same value safely without the need to share it. *All
+/// Windows handle objects created by this crate are inheritable.*
 ///
-/// **Implemented for all types inside this crate which implement [`AsRawHandle`] and are supposed to be shared between processes.**
+/// **Implemented for all types inside this crate which implement
+/// [`AsRawHandle`] and are supposed to be shared between processes.**
 ///
 /// [`DuplicateHandle`]: https://docs.microsoft.com/en-us/windows/win32/api/handleapi/nf-handleapi-duplicatehandle " "
 /// [`AsRawHandle`]: https://doc.rust-lang.org/std/os/windows/io/trait.AsRawHandle.html " "
 pub trait ShareHandle: AsRawHandle {
-    /// Duplicates the handle to make it accessible in the specified process (taken as a handle to that process) and returns the raw value of the handle which can then be sent via some form of IPC, typically named pipes. This is the only way to use any form of IPC other than named pipes to communicate between two processes which do not have a parent-child relationship or if the handle wasn't created as inheritable, therefore named pipes paired with this are a hard requirement in order to communicate between processes if one wasn't spawned by another.
+    /// Duplicates the handle to make it accessible in the specified process
+    /// (taken as a handle to that process) and returns the raw value of the
+    /// handle which can then be sent via some form of IPC, typically named
+    /// pipes. This is the only way to use any form of IPC other than named
+    /// pipes to communicate between two processes which do not have a
+    /// parent-child relationship or if the handle wasn't created as
+    /// inheritable, therefore named pipes paired with this are a hard
+    /// requirement in order to communicate between processes if one wasn't
+    /// spawned by another.
     ///
-    /// Backed by [`DuplicateHandle`]. Doesn't require unsafe code since `DuplicateHandle` never leads to undefined behavior if the `lpTargetHandle` parameter is a valid pointer, only creates an error.
+    /// Backed by [`DuplicateHandle`]. Doesn't require unsafe code since
+    /// `DuplicateHandle` never leads to undefined behavior if the
+    /// `lpTargetHandle` parameter is a valid pointer, only creates an error.
     fn share(&self, reciever: HANDLE) -> io::Result<HANDLE> {
         let (success, new_handle) = unsafe {
             let mut new_handle = INVALID_HANDLE_VALUE;
@@ -50,13 +71,17 @@ pub trait ShareHandle: AsRawHandle {
     }
 }
 #[cfg(windows)]
-impl ShareHandle for crate::unnamed_pipe::UnnamedPipeReader {}
+impl ShareHandle for crate::unnamed_pipe::UnnamedPipeReader {
+}
 #[cfg(windows)]
-impl ShareHandle for unnamed_pipe::UnnamedPipeReader {}
+impl ShareHandle for unnamed_pipe::UnnamedPipeReader {
+}
 #[cfg(windows)]
-impl ShareHandle for crate::unnamed_pipe::UnnamedPipeWriter {}
+impl ShareHandle for crate::unnamed_pipe::UnnamedPipeWriter {
+}
 #[cfg(windows)]
-impl ShareHandle for unnamed_pipe::UnnamedPipeWriter {}
+impl ShareHandle for unnamed_pipe::UnnamedPipeWriter {
+}
 
 /// Newtype wrapper which defines file I/O operations on a `HANDLE` to a file.
 #[repr(transparent)]
@@ -145,5 +170,7 @@ impl FromRawHandle for FileHandleOps {
         Self(op)
     }
 }
-unsafe impl Send for FileHandleOps {}
-unsafe impl Sync for FileHandleOps {} // WriteFile and ReadFile are thread-safe, apparently
+unsafe impl Send for FileHandleOps {
+}
+unsafe impl Sync for FileHandleOps {
+} // WriteFile and ReadFile are thread-safe, apparently

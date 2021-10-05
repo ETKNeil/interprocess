@@ -1,5 +1,7 @@
 use super::named_pipe::{
-    DuplexBytePipeStream as PipeStream, PipeListener as GenericPipeListener, PipeListenerOptions,
+    DuplexBytePipeStream as PipeStream,
+    PipeListener as GenericPipeListener,
+    PipeListenerOptions,
     PipeMode,
 };
 use crate::local_socket::{LocalSocketName, NameTypeSupport, ToLocalSocketName};
@@ -23,10 +25,8 @@ pub struct LocalSocketListener {
 impl LocalSocketListener {
     pub fn bind<'a>(name: impl ToLocalSocketName<'a>) -> io::Result<Self> {
         let name = name.to_local_socket_name()?;
-        let inner = PipeListenerOptions::new()
-            .name(name.into_inner())
-            .mode(PipeMode::Bytes)
-            .create()?;
+        let inner =
+            PipeListenerOptions::new().name(name.into_inner()).mode(PipeMode::Bytes).create()?;
         Ok(Self { inner })
     }
     pub fn accept(&self) -> io::Result<LocalSocketStream> {
@@ -47,7 +47,7 @@ impl Debug for LocalSocketListener {
 }
 
 pub struct LocalSocketStream {
-    inner: PipeStream,
+    inner:            PipeStream,
     server_or_client: AtomicU8,
 }
 #[repr(u8)]
@@ -97,10 +97,9 @@ impl LocalSocketStream {
                 // having two different flags in different bits.
                 flags &= PIPE_SERVER_END;
                 // Round-trip into ServerOrClient to validate and fall back to the Nah variant.
-                self.server_or_client
-                    .store(ServerOrClient::from(flags as u8) as _, Relaxed);
+                self.server_or_client.store(ServerOrClient::from(flags as u8) as _, Relaxed);
                 self.peer_pid()
-            }
+            },
         }
     }
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
@@ -128,9 +127,7 @@ impl Write for LocalSocketStream {
 }
 impl Debug for LocalSocketStream {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("LocalSocketStream")
-            .field("handle", &self.as_raw_handle())
-            .finish()
+        f.debug_struct("LocalSocketStream").field("handle", &self.as_raw_handle()).finish()
     }
 }
 impl AsRawHandle for LocalSocketStream {

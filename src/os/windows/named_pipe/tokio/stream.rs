@@ -2,7 +2,8 @@ use super::{
     super::convert_path,
     enums::{PipeMode, PipeStreamRole},
     imports::*,
-    PipeOps, PipeStreamInternals,
+    PipeOps,
+    PipeStreamInternals,
 };
 use std::{
     ffi::{OsStr, OsString},
@@ -13,7 +14,8 @@ use std::{
     ptr,
     sync::{
         atomic::{AtomicBool, Ordering::Release},
-        Arc, Mutex,
+        Arc,
+        Mutex,
     },
     task::{Context, Poll},
 };
@@ -21,17 +23,33 @@ use to_method::To;
 
 /// Defines the properties of Tokio pipe stream types.
 ///
-/// This is the counterpart of the [`PipeStream`](super::super::PipeStream) type for the Tokio integration.
+/// This is the counterpart of the [`PipeStream`](super::super::PipeStream) type
+/// for the Tokio integration.
 pub trait TokioPipeStream: AsRawHandle + PipeStreamInternals {
-    /// The data stream flow direction for the pipe. See the [`PipeStreamRole`] enumeration for more on what this means.
+    /// The data stream flow direction for the pipe. See the [`PipeStreamRole`]
+    /// enumeration for more on what this means.
     const ROLE: PipeStreamRole;
-    /// The data stream mode for the pipe. If set to `PipeMode::Bytes`, message boundaries will broken and having `READ_MODE` at `PipeMode::Messages` would be a pipe creation error.
+    /// The data stream mode for the pipe. If set to `PipeMode::Bytes`, message
+    /// boundaries will broken and having `READ_MODE` at `PipeMode::Messages`
+    /// would be a pipe creation error.
     ///
-    /// For reader streams, this value has no meaning: if the reader stream belongs to the server (client sends data, server receives), then `READ_MODE` takes the role of this value; if the reader stream belongs to the client, there is no visible difference to how the server writes data since the client specifies its read mode itself anyway.
+    /// For reader streams, this value has no meaning: if the reader stream
+    /// belongs to the server (client sends data, server receives), then
+    /// `READ_MODE` takes the role of this value; if the reader stream belongs
+    /// to the client, there is no visible difference to how the server writes
+    /// data since the client specifies its read mode itself anyway.
     const WRITE_MODE: Option<PipeMode>;
-    /// The data stream mode used when reading from the pipe: if `WRITE_MODE` is `PipeMode::Messages` and `READ_MODE` is `PipeMode::Bytes`, the message boundaries will be destroyed when reading even though they are retained when written. See the `PipeMode` enumeration for more on what those modes mean.
+    /// The data stream mode used when reading from the pipe: if `WRITE_MODE` is
+    /// `PipeMode::Messages` and `READ_MODE` is `PipeMode::Bytes`, the message
+    /// boundaries will be destroyed when reading even though they are retained
+    /// when written. See the `PipeMode` enumeration for more on what those
+    /// modes mean.
     ///
-    /// For writer streams, this value has no meaning: if the writer stream belongs to the server (server sends data, client receives), then the server doesn't read data at all and thus this does not affect anything; if the writer stream belongs to the client, then the client doesn't read anything and the value is meaningless as well.
+    /// For writer streams, this value has no meaning: if the writer stream
+    /// belongs to the server (server sends data, client receives), then the
+    /// server doesn't read data at all and thus this does not affect anything;
+    /// if the writer stream belongs to the client, then the client doesn't read
+    /// anything and the value is meaningless as well.
     const READ_MODE: Option<PipeMode>;
 }
 
@@ -471,10 +489,7 @@ fn _connect(
     let name = convert_path(pipe_name, hostname);
     let name = OsString::from_wide(&name[..]);
     let name_ref: &OsStr = name.as_ref();
-    let tnpclient = TokioNPClientOptions::new()
-        .read(read)
-        .write(write)
-        .open(name_ref)?;
+    let tnpclient = TokioNPClientOptions::new().read(read).write(write).open(name_ref)?;
     let pipeops = PipeOps::Client(tnpclient.to::<Mutex<_>>());
     Ok(pipeops)
 }

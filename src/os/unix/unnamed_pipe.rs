@@ -19,8 +19,8 @@ pub(crate) fn pipe() -> io::Result<(PubWriter, PubReader)> {
     };
     if success {
         unsafe {
-            // SAFETY: we just created both of those file descriptors, which means that neither of
-            // them can be in use elsewhere.
+            // SAFETY: we just created both of those file descriptors, which means that
+            // neither of them can be in use elsewhere.
             let reader = PubReader {
                 inner: UnnamedPipeReader::from_raw_fd(fds[0]),
             };
@@ -35,15 +35,16 @@ pub(crate) fn pipe() -> io::Result<(PubWriter, PubReader)> {
 }
 
 pub(crate) struct UnnamedPipeReader(FdOps);
-// Please, for the love of Unix gods, don't ever try to implement this for &UnnamedPipeReader,
-// reading a pipe concurrently is UB and UnnamedPipeReader is Send and Sync. If you do, the
-// universe will collapse immediately.
+// Please, for the love of Unix gods, don't ever try to implement this for
+// &UnnamedPipeReader, reading a pipe concurrently is UB and UnnamedPipeReader
+// is Send and Sync. If you do, the universe will collapse immediately.
 impl Read for UnnamedPipeReader {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.read(buf)
     }
 }
-impl Sealed for UnnamedPipeReader {}
+impl Sealed for UnnamedPipeReader {
+}
 impl AsRawFd for UnnamedPipeReader {
     fn as_raw_fd(&self) -> c_int {
         self.0.as_raw_fd()
@@ -65,9 +66,7 @@ impl FromRawFd for UnnamedPipeReader {
 }
 impl Debug for UnnamedPipeReader {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("UnnamedPipeReader")
-            .field("file_descriptor", &self.as_raw_fd())
-            .finish()
+        f.debug_struct("UnnamedPipeReader").field("file_descriptor", &self.as_raw_fd()).finish()
     }
 }
 
@@ -80,7 +79,8 @@ impl Write for UnnamedPipeWriter {
         self.0.flush()
     }
 }
-impl Sealed for UnnamedPipeWriter {}
+impl Sealed for UnnamedPipeWriter {
+}
 impl AsRawFd for UnnamedPipeWriter {
     fn as_raw_fd(&self) -> c_int {
         self.0.as_raw_fd()
@@ -98,8 +98,6 @@ impl FromRawFd for UnnamedPipeWriter {
 }
 impl Debug for UnnamedPipeWriter {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("UnnamedPipeWriter")
-            .field("file_descriptor", &self.as_raw_fd())
-            .finish()
+        f.debug_struct("UnnamedPipeWriter").field("file_descriptor", &self.as_raw_fd()).finish()
     }
 }

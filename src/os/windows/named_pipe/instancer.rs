@@ -6,7 +6,8 @@ use std::{
             AtomicBool,
             Ordering::{AcqRel, Relaxed},
         },
-        Arc, RwLock,
+        Arc,
+        RwLock,
     },
 };
 
@@ -21,12 +22,13 @@ impl<T> Instancer<T> {
             // just like a mutex does.
             let cmpxchg_result = inst.1.compare_exchange(false, true, AcqRel, Relaxed);
             if cmpxchg_result.is_ok() {
-                // If the compare+exchange returned Ok, then we successfully took ownership of the
-                // instance and we can return it right away.
+                // If the compare+exchange returned Ok, then we successfully took ownership of
+                // the instance and we can return it right away.
                 return Some(Arc::clone(inst));
             }
-            // If not, the instance we tried to claim is already at work and we need to seek a new
-            // one, which is what the next iteration will do.
+            // If not, the instance we tried to claim is already at work and we
+            // need to seek a new one, which is what the next
+            // iteration will do.
         }
         None
     }

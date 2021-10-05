@@ -92,16 +92,18 @@ impl Drop for FdOps {
         unsafe { close_fd(self.0) };
     }
 }
-unsafe impl Send for FdOps {}
-unsafe impl Sync for FdOps {}
+unsafe impl Send for FdOps {
+}
+unsafe impl Sync for FdOps {
+}
 
 pub(super) unsafe fn close_fd(fd: i32) {
     let success = unsafe {
         let mut success = true;
-        // If the close() call fails, the loop starts and keeps retrying until either the error
-        // value isn't Interrupted (in which case the assertion fails) or the close operation
-        // properly fails with a non-Interrupted error type. Why does Unix even have this
-        // idiotic error type?
+        // If the close() call fails, the loop starts and keeps retrying until either
+        // the error value isn't Interrupted (in which case the assertion fails)
+        // or the close operation properly fails with a non-Interrupted error
+        // type. Why does Unix even have this idiotic error type?
         while libc::close(fd) != 0 {
             if io::Error::last_os_error().kind() != io::ErrorKind::Interrupted {
                 // An actual close error happened — return early now

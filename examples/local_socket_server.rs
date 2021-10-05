@@ -6,9 +6,7 @@ use std::{
 
 fn main() -> Result<(), Box<dyn Error>> {
     fn handle_error(connection: io::Result<LocalSocketStream>) -> Option<LocalSocketStream> {
-        connection
-            .map_err(|error| eprintln!("Incoming connection failed: {}", error))
-            .ok()
+        connection.map_err(|error| eprintln!("Incoming connection failed: {}", error)).ok()
     }
 
     let listener = LocalSocketListener::bind("/tmp/example.sock")?;
