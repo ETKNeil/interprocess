@@ -299,9 +299,9 @@ impl<'a> Iterator for AncillaryDataDecoder<'a> {
             return None;
         }
 
-        // The first field is the length, which is a size_t
+        // The first field is the length of the header + payload, which is a size_t (we subtract the size of the header from it)
         #[cfg(target_pointer_width = "64")]
-        let element_size = {
+        let elements_size = {
             if bytes.len() - self.i < 8 {
                 self.i = end;
                 return None;
@@ -309,13 +309,29 @@ impl<'a> Iterator for AncillaryDataDecoder<'a> {
             u64_from_slice(&bytes[self.i..self.i + 8]) as usize
         };
         #[cfg(target_pointer_width = "32")]
-        let element_size = {
+        let elements_size = {
             if bytes.len() - self.i < 4 {
                 self.i = end;
                 return None;
             }
             u32_from_slice(&bytes[self.i..self.i + 4]) as usize
         };
+
+        // You should never have an empty payload, if it is then return
+        let elements_size=match elements_size.checked_sub(std::mem::size_of::<cmsghdr>()){
+            None => {
+                self.i = end;
+                return None;
+            }
+            Some(i) if i==0 => {
+                self.i = end;
+                return None;
+            }
+            Some(i) => {
+                i
+            }
+        };
+
         // The cmsg_level field is always SOL_SOCKET — we don't need it, let's get the
         // cmsg_type field right away by first getting the offset at which it's
         // located:
@@ -331,7 +347,7 @@ impl<'a> Iterator for AncillaryDataDecoder<'a> {
 
         // Update the counter before returning.
         self.i += element_offset // cmsg_size, cmsg_level and cmsg_type
-                + element_size; // data size
+                + elements_size; // data size
 
         // SAFETY: those are ints lmao
         match element_type as i32 {
@@ -339,7 +355,7 @@ impl<'a> Iterator for AncillaryDataDecoder<'a> {
                 // We're reading one or multiple descriptors from the ancillary data payload.
                 // All descriptors are 4 bytes in size — leftover bytes are discarded thanks
                 // to integer division rules
-                let amount_of_descriptors = element_size / 4;
+                let amount_of_descriptors = elements_size / 4;
                 let mut descriptors = Vec::<c_int>::with_capacity(amount_of_descriptors);
                 let mut descriptor_offset = element_offset;
                 for _ in 0..amount_of_descriptors {
