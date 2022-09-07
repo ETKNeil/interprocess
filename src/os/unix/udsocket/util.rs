@@ -9,6 +9,7 @@ use std::{
     mem::{size_of, size_of_val, zeroed},
     ptr::null,
 };
+use std::convert::TryInto;
 use to_method::To;
 
 cfg_if! {
@@ -165,7 +166,7 @@ pub fn fill_out_msghdr_r(
     _fill_out_msghdr(
         hdr,
         iov.as_ptr() as *mut _,
-        to_msghdrsize(iov.len())?,
+        to_msghdrsize(iov.len())?.try_into().map_err(|x| std::io::Error::new(std::io::ErrorKind::Other,x))?,
         anc.as_mut_ptr(),
         anc.len(),
     )
@@ -174,7 +175,7 @@ pub fn fill_out_msghdr_w(hdr: &mut msghdr, iov: &[IoSlice<'_>], anc: &[u8]) -> i
     _fill_out_msghdr(
         hdr,
         iov.as_ptr() as *mut _,
-        to_msghdrsize(iov.len())?,
+        to_msghdrsize(iov.len())?.try_into().map_err(|x| std::io::Error::new(std::io::ErrorKind::Other,x))?,
         anc.as_ptr() as *mut _,
         anc.len(),
     )
@@ -188,7 +189,7 @@ fn _fill_out_msghdr(
     anclen: usize,
 ) -> io::Result<()> {
     hdr.msg_iov = iov;
-    hdr.msg_iovlen = to_msghdrsize(iovlen)?;
+    hdr.msg_iovlen = to_msghdrsize(iovlen)?.try_into().map_err(|x| std::io::Error::new(std::io::ErrorKind::Other,x))?;
     hdr.msg_control = anc as *mut _;
     hdr.msg_controllen = to_msghdrsize(anclen)?;
     Ok(())
